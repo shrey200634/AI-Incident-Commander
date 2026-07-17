@@ -9,6 +9,7 @@ import lombok.Setter;
 public class UpdateStatusRequest {
 
     @NotBlank(message = "target status is required")
+
     private String targetStatus;
 
     private String reason;
