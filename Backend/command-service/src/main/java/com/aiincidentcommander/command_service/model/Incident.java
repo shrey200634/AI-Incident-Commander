@@ -36,7 +36,7 @@ public class Incident {
     private String escalationReason ;
 
     @PrePersist
-    protected  void oneCreate(){
+    protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.status = IncidentStatus.NEW;
     }

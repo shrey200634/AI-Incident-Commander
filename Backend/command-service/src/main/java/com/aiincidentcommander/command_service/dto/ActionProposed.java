@@ -8,10 +8,9 @@ import lombok.Setter;
 @Setter
 public class ActionProposed {
 
+    @NotBlank(message = "action type is required")
+    private String actionType;
 
-    @NotBlank(message = " action type is requires ")
-    private String actionType ;
-
-    @NotBlank(message = " rational is required ")
-    private String rational ;
+    @NotBlank(message = "rationale is required")
+    private String rationale;
 }
