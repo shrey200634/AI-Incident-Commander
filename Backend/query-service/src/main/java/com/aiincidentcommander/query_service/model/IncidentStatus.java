@@ -1,4 +1,4 @@
-package com.aiincidentcommander.query_service.service;
+package com.aiincidentcommander.query_service.model;
 
 public enum IncidentStatus {
     NEW,
