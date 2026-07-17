@@ -22,8 +22,8 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND , ex.getMessage());
     }
 
-    @ExceptionHandler(ActionNnotFoundException.class)
-    public  ResponseEntity<Map<String , Object>> handleActionNotFound(RuntimeException ex ){
+    @ExceptionHandler(ActionNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleActionNotFound(RuntimeException ex) {
         return buildResponse(HttpStatus.NOT_FOUND , ex.getMessage());
     }
 
@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
     private ResponseEntity<Map<String , Object>> buildResponse(HttpStatus status , String message ){
         Map<String , Object> body = new HashMap<>();
         body.put("timestamp" , LocalDateTime.now());
-        body.put("status " , status.value());
+        body.put("status", status.value());
         body.put("error" , message);
         return ResponseEntity.status(status).body(body);
     }

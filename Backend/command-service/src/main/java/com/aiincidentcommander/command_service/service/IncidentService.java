@@ -54,7 +54,7 @@ public class IncidentService {
         RemediationAction action = RemediationAction.builder()
                 .incidentId(incident.getId())
                 .actionType(request.getActionType())
-                .rationale(request.getRational())
+                .rationale(request.getRationale())
                 .status(ActionStatus.PROPOSED)
                 .build();
 
@@ -93,7 +93,7 @@ public class IncidentService {
                 .id(action.getId())
                 .incidentId(action.getIncidentId())
                 .actionType(action.getActionType())
-                .rational(action.getRationale())
+                .rationale(action.getRationale())
                 .status(action.getStatus())
                 .createdAt(action.getCreatedAt())
                 .build();
