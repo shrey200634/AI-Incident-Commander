@@ -99,9 +99,6 @@ public class IncidentQueryService {
                 .toList();
     }
 
-
-
-
     //helper--------------------------------------------------------------------------------------------------
     private IncidentReadModel findOrThrow(Long id ){
         return incidentReadRepository.findById(id)
