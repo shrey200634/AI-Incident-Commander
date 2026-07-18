@@ -15,6 +15,7 @@ public class KafkaTopicConfig {
     public static final String TOPIC_ACTION_ROLLED_BACK = "action.rolled_back";
     public static final String TOPIC_INCIDENT_ESCALATED = "incident.escalated";
     public static final String TOPIC_INCIDENT_RESOLVED = "incident.resolved";
+    public static final String TOPIC_INCIDENT_STATUS_UPDATED = "incident.status_updated";
 
     @Bean
     public NewTopic incidentCreatedTopic() {
@@ -67,6 +68,14 @@ public class KafkaTopicConfig {
     @Bean
     public NewTopic incidentResolvedTopic() {
         return TopicBuilder.name(TOPIC_INCIDENT_RESOLVED)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic incidentStatusUpdatedTopic() {
+        return TopicBuilder.name(TOPIC_INCIDENT_STATUS_UPDATED)
                 .partitions(3)
                 .replicas(1)
                 .build();

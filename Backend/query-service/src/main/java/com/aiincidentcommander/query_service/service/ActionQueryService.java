@@ -4,6 +4,7 @@ import com.aiincidentcommander.query_service.dto.ActionReadDto;
 import com.aiincidentcommander.query_service.exception.ActionNotFoundException;
 import com.aiincidentcommander.query_service.model.ActionReadModel;
 import com.aiincidentcommander.query_service.repo.ActionReadRepo;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -11,9 +12,10 @@ import java.util.List;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ActionQueryService {
 
-    private ActionReadRepo actionReadRepo ;
+    private final ActionReadRepo actionReadRepo ;
 
     // get all action for an incident
     public List<ActionReadDto> getActionByIncidentId(Long id){

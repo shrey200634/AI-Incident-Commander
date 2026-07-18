@@ -15,5 +15,7 @@ public class IncidentResponse {
     private String severity;
     private IncidentStatus status ;
     private LocalDateTime createdAt ;
+    private LocalDateTime resolvedAt ;
+    private String escalationReason ;
 
 }

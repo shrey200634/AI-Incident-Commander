@@ -16,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/query")
 public class ActionQueryController {
 
-    private ActionQueryService service ;
+    private final ActionQueryService service ;
 
 
     @GetMapping("/incidents/{incidentId}/actions")

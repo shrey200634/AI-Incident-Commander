@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -17,12 +17,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class IncidentEventConsumer {
 
-    private IncidentReadRepository incidentReadRepository;
-    private ObjectMapper objectMapper;
+    private final IncidentReadRepository incidentReadRepository;
+    private final ObjectMapper objectMapper;
 
     // incident event
     @KafkaListener(topics = "incident.created", groupId = "query-service-group")
-    private void onIncidentCreated(IncidentEvent event) {
+    public void onIncidentCreated(IncidentEvent event) {
         log.info("Received incident.created: incidentId={}", event.getIncidentId());
         Map<String , Object> payload = toMap(event.getPayload());
 
@@ -72,8 +72,18 @@ public class IncidentEventConsumer {
         }, () -> log.warn("Incident not found for resolution: id={}", event.getIncidentId()));
     }
 
+    @KafkaListener(topics = "incident.status_updated", groupId = "query-service-group")
+    public void onIncidentStatusUpdated(IncidentEvent event) {
+        log.info("Received incident.status_updated: incidentId={}", event.getIncidentId());
+        Map<String, Object> payload = toMap(event.getPayload());
 
-
+        incidentReadRepository.findById(event.getIncidentId()).ifPresentOrElse(model -> {
+            model.setStatus(IncidentStatus.valueOf((String) payload.get("status")));
+            model.setLastUpdatedAt(LocalDateTime.now());
+            incidentReadRepository.save(model);
+            log.info("Updated incident status to {}: id={}", model.getStatus(), model.getId());
+        }, () -> log.warn("Incident not found for status update: id={}", event.getIncidentId()));
+    }
 
     //helper ----------------------------------------------------------------------------------------
 

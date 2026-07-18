@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/query/imcidents")
+@RequestMapping("/api/query/incidents")
 public class IdentityQueryController {
     private final IncidentQueryService service ;
 

@@ -20,8 +20,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IncidentQueryService {
 
-    private IncidentReadRepository incidentReadRepository ;
-    private ActionReadRepo actionReadRepo;
+    private final IncidentReadRepository incidentReadRepository ;
+    private final ActionReadRepo actionReadRepo;
 
     //get all the incident
     public List<IncidentReadDto> getAllIncident (){
@@ -123,7 +123,7 @@ public class IncidentQueryService {
                 .id(model.getId())
                 .incidentId(model.getIncidentId())
                 .actionType(model.getActionType())
-                .rationals(model.getActionType())
+                .rationals(model.getRationale())
                 .status(model.getStatus())
                 .approvedBy(model.getApprovedBy())
                 .executedAt(model.getExecutedAt())

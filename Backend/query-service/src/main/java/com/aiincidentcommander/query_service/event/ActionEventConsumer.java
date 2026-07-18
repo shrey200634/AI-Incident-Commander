@@ -3,12 +3,14 @@ package com.aiincidentcommander.query_service.event;
 
 import com.aiincidentcommander.query_service.model.ActionReadModel;
 import com.aiincidentcommander.query_service.model.ActionStatus;
+import com.aiincidentcommander.query_service.model.IncidentStatus;
 import com.aiincidentcommander.query_service.repo.ActionReadRepo;
+import com.aiincidentcommander.query_service.repo.IncidentReadRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -18,8 +20,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ActionEventConsumer {
 
-    private ObjectMapper objectMapper;
-    private ActionReadRepo actionReadRepo;
+    private final ObjectMapper objectMapper;
+    private final ActionReadRepo actionReadRepo;
+    private final IncidentReadRepository incidentReadRepository;
 
 
     // action events
@@ -32,7 +35,7 @@ public class ActionEventConsumer {
                 .id(toLong(payload.get("id")))
                 .incidentId(toLong(payload.get("incidentId")))
                 .actionType((String) payload.get("actionType"))
-                .rationale((String) payload.get("rationals"))
+                .rationale((String) payload.get("rationale"))
                 .status(ActionStatus.valueOf((String) payload.get("status")))
                 .createdAt(toLocalDateTime(payload.get("createdAt")))
                 .lastUpdatedAt(LocalDateTime.now())
@@ -56,10 +59,15 @@ public class ActionEventConsumer {
             actionReadRepo.save(model);
 
             log.info("Updated action to APPROVED: id={}", actionId);
+
+            incidentReadRepository.findById(event.getIncidentId()).ifPresent(incident -> {
+                incident.setStatus(IncidentStatus.WAITING_APPROVAL);
+                incident.setLastUpdatedAt(LocalDateTime.now());
+                incidentReadRepository.save(incident);
+                log.info("Updated incident status to WAITING_APPROVAL: id={}", incident.getId());
+            });
         }, () -> log.warn("Action not found for approval: id={}", actionId));
     }
-
-
 
     @KafkaListener(topics = "action.executed", groupId = "query-service-group")
     public void onActionExecuted(IncidentEvent event) {
@@ -73,9 +81,15 @@ public class ActionEventConsumer {
             model.setLastUpdatedAt(LocalDateTime.now());
             actionReadRepo.save(model);
             log.info("Updated action to EXECUTED: id={}", actionId);
+
+            incidentReadRepository.findById(event.getIncidentId()).ifPresent(incident -> {
+                incident.setStatus(IncidentStatus.EXECUTING);
+                incident.setLastUpdatedAt(LocalDateTime.now());
+                incidentReadRepository.save(incident);
+                log.info("Updated incident status to EXECUTING: id={}", incident.getId());
+            });
         }, () -> log.warn("Action not found for execution: id={}", actionId));
     }
-
 
     @KafkaListener(topics = "action.rolled_back", groupId = "query-service-group")
     public void onActionRolledBack(IncidentEvent event) {
@@ -89,6 +103,13 @@ public class ActionEventConsumer {
             model.setLastUpdatedAt(LocalDateTime.now());
             actionReadRepo.save(model);
             log.info("Updated action to ROLLED_BACK: id={}", actionId);
+
+            incidentReadRepository.findById(event.getIncidentId()).ifPresent(incident -> {
+                incident.setStatus(IncidentStatus.ROLLBACK);
+                incident.setLastUpdatedAt(LocalDateTime.now());
+                incidentReadRepository.save(incident);
+                log.info("Updated incident status to ROLLBACK: id={}", incident.getId());
+            });
         }, () -> log.warn("Action not found for rollback: id={}", actionId));
     }
 
