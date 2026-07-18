@@ -21,6 +21,9 @@ public class IncidentReadModel {
     @Column(nullable = false)
     private String serviceName ;
 
+    @Column(nullable = false)
+    private String severity ;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private IncidentStatus status ;
