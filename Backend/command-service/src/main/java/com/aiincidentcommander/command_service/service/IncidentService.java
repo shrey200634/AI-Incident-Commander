@@ -159,6 +159,8 @@ public class IncidentService {
         log.info("Action rolled back: incidentId={}, actionId={}", id, actionId);
 
         publishEvent(KafkaTopicConfig.TOPIC_ACTION_ROLLED_BACK , id , toResponseRemediation(action));
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_PROPOSED, id, toResponseRemediation(rollbackAction));
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_EXECUTED, id, toResponseRemediation(rollbackAction));
         return  toResponseRemediation( action);
 
     }
@@ -184,11 +186,15 @@ public class IncidentService {
             publishEvent(KafkaTopicConfig.TOPIC_INCIDENT_ESCALATED, id , toResponse(incident));
 
         }
-        if (targetStatus == IncidentStatus.RESOLVED){
+        else if (targetStatus == IncidentStatus.RESOLVED){
             incident.setResolvedAt(LocalDateTime.now());
             incidentRep.save(incident);
             log.info("Incident resolved: id={}", id);
             publishEvent(KafkaTopicConfig.TOPIC_INCIDENT_RESOLVED, id , toResponse(incident));
+        }
+        else {
+            log.info("Incident status updated: id={}, status={}", id, targetStatus);
+            publishEvent("incident.status_updated", id, toResponse(incident));
         }
         return  toResponse( incident);
     }
@@ -220,6 +226,8 @@ public class IncidentService {
                 .severity(incident.getSeverity())
                 .status(incident.getStatus())
                 .createdAt(incident.getCreatedAt())
+                .resolvedAt(incident.getResolvedAt())
+                .escalationReason(incident.getEscalationReason())
                 .build();
     }
 
