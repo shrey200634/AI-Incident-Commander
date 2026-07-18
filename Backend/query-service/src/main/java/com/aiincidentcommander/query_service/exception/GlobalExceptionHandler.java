@@ -1,5 +1,6 @@
-package com.aiincidentcommander.query_service.controller;
+package com.aiincidentcommander.query_service.exception;
 
+import com.aiincidentcommander.query_service.exception.ActionNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

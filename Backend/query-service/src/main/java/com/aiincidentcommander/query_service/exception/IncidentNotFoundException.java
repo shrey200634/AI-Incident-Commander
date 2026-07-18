@@ -1,4 +1,4 @@
-package com.aiincidentcommander.query_service.controller;
+package com.aiincidentcommander.query_service.exception;
 
 
 public class IncidentNotFoundException extends  RuntimeException {
