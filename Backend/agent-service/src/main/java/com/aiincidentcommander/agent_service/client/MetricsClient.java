@@ -2,6 +2,7 @@ package com.aiincidentcommander.agent_service.client;
 
 
 import com.aiincidentcommander.agent_service.dto.MetricSnapshot;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ public class MetricsClient {
 
     private final RedisTemplate<String , MetricSnapshot> redisTemplate ;
     private static final String REDIS_KEY_PREFIX = "metrics";
+    private final ObjectMapper objectMapper;
 
     @CircuitBreaker(name = "metricsService" , fallbackMethod = "fallbackToCache")
     public MetricSnapshot fetchMetrics(String serviceName){
@@ -38,13 +40,22 @@ public class MetricsClient {
 
     }
 
-    private MetricSnapshot fallBackCache(String serviceName , Throwable t ){
+    private MetricSnapshot fallbackToCache(String serviceName, Throwable t) {
         log.warn("Circuit open/call failed for {}, falling back to Redis cache. Reason: {}",
                 serviceName, t.getMessage());
-        MetricSnapshot cache = redisTemplate.opsForValue().get(REDIS_KEY_PREFIX + serviceName);
-        if (cache != null ){
-            cache.setStale(true);
-            return cache;
+
+        Object cached = redisTemplate.opsForValue().get(REDIS_KEY_PREFIX + serviceName);
+        MetricSnapshot snapshot = null;
+
+        if (cached instanceof MetricSnapshot ms) {
+            snapshot = ms;
+        } else if (cached != null) {
+            snapshot = objectMapper.convertValue(cached, MetricSnapshot.class);
+        }
+
+        if (snapshot != null) {
+            snapshot.setStale(true);
+            return snapshot;
         }
 
         return MetricSnapshot.builder()
@@ -53,6 +64,5 @@ public class MetricsClient {
                 .avgLatencyMs(0.0)
                 .stale(true)
                 .build();
-
     }
 }

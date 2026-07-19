@@ -1,14 +1,12 @@
 package com.aiincidentcommander.agent_service.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 
 @Builder
 @Setter
 @NoArgsConstructor
+@Getter
 @AllArgsConstructor
 public class MetricSnapshot {
 
