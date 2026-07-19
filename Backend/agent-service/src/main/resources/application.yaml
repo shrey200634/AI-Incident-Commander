@@ -1,0 +1,41 @@
+server:
+  port: 8083
+
+spring:
+  config:
+    import: optional:file:.env[.properties]
+
+  application:
+    name: agent-service
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: agent-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.value.default.type: com.aiincidentcommander.agent_service.event.IncidentEvent
+        spring.json.use.type.headers: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# Base URL for calling Command Service's REST endpoints (approve/execute stay human-triggered;
+# Agent Service only calls proposeAction after investigating)
+command-service:
+  base-url: ${COMMAND_SERVICE_URL}
+
+# Prometheus metrics endpoint the circuit breaker will protect
+prometheus:
+  base-url: ${PROMETHEUS_URL}
