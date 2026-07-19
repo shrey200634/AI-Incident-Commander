@@ -9,5 +9,5 @@ import lombok.*;
 @AllArgsConstructor
 public class ProposedActionDto {
     private String actionType ;
-    private String rationals;
+    private String rationale;
 }
