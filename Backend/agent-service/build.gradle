@@ -41,6 +41,11 @@ dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 	implementation 'org.springframework.boot:spring-boot-starter-aspectj'
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2'
+
+
+	implementation platform('org.springframework.ai:spring-ai-bom:2.0.0')
+	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 }
 
 dependencyManagement {
