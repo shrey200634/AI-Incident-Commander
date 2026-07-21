@@ -19,7 +19,6 @@ public class CommandServiceClient {
                 .baseUrl(baseUrl)
                 .build();
     }
-
     public RemediationActionResponse proposeAction(Long incidentId, ProposedActionDto request) {
         log.info("Proposing action for incidentId={}: type={}", incidentId, request.getActionType());
 
@@ -29,7 +28,6 @@ public class CommandServiceClient {
                 .body(request)
                 .retrieve()
                 .body(RemediationActionResponse.class);
-
     }
 
     }
