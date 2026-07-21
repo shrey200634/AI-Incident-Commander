@@ -15,12 +15,16 @@ spring:
         chat:
           options:
             model: gemini-2.5-flash
+            max-output-tokens: 512
+
     openai:
       api-key: ${GROQ_API_KEY}
       base-url: https://api.groq.com/openai/v1
       chat:
         options:
           model: llama-3.3-70b-versatile
+          max-output-tokens: 512
+
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}

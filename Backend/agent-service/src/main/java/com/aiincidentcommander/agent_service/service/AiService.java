@@ -17,7 +17,7 @@ public class AiService {
 
     }
 
-    public  String call(String prompt  , Object tools ){
+    public  String call(String prompt  , Object... tools ){
         try {
             log.info("Calling Gemini (primary)");
             return geminiChatClint
