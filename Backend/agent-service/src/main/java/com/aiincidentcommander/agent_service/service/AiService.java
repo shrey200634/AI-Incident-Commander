@@ -17,14 +17,23 @@ public class AiService {
 
     }
 
-    public  String call(String prompt ){
+    public  String call(String prompt  , Object tools ){
         try {
             log.info("Calling Gemini (primary)");
-            return geminiChatClint.prompt().user(prompt).call().content();
+            return geminiChatClint
+                    .prompt()
+                    .user(prompt)
+                    .tools(tools)
+                    .call()
+                    .content();
         }catch (Exception ex ){
             log.warn("Gemini call failed ({}), falling back to Groq", ex.getMessage());
             try{
-            return groqClient.prompt().user(prompt).call().content();
+            return groqClient.prompt()
+                    .user(prompt)
+                    .tools(tools)
+                    .call()
+                    .content();
             }catch (Exception e2){
                 log.error("Groq fallback also failed: {}", e2.getMessage());
                  throw new RuntimeException("Both gemini and groq is failed " , e2);
