@@ -21,7 +21,7 @@ public class WhatsAppNotificationService {
     private final  NotificationLogRepository notificationLogRepository;
 
     @Async
-    private void send(Long incidentId , String eventType , String massageBody){
+    public  void send(Long incidentId , String eventType , String massageBody){
         NotificationLog logEntry = NotificationLog.builder()
                 .incidentId(incidentId)
                 .chanel("WHATSAPP")
