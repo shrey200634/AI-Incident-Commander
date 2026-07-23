@@ -12,6 +12,7 @@ public class RemediationActionResponse {
 
     private Long id;
     private Long incidentId;
+    private String serviceName ;
     private String actionType;
     private String rationale;
     private ActionStatus status;
