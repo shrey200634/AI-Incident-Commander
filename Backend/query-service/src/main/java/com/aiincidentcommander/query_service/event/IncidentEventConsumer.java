@@ -3,6 +3,7 @@ package com.aiincidentcommander.query_service.event;
 import com.aiincidentcommander.query_service.model.IncidentReadModel;
 import com.aiincidentcommander.query_service.model.IncidentStatus;
 import com.aiincidentcommander.query_service.repo.IncidentReadRepository;
+import com.aiincidentcommander.query_service.websocket.WebSocketEventRelay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,6 +20,7 @@ public class IncidentEventConsumer {
 
     private final IncidentReadRepository incidentReadRepository;
     private final ObjectMapper objectMapper;
+    private final WebSocketEventRelay webSocketEventRelay;
 
     // incident event
     @KafkaListener(topics = "incident.created", groupId = "query-service-group")
@@ -37,6 +39,8 @@ public class IncidentEventConsumer {
 
         incidentReadRepository.save(model);
         log.info("Saved incident read model: id={}", model.getId());
+        webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+        webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
     }
 
 
@@ -52,6 +56,8 @@ public class IncidentEventConsumer {
             model.setEscalationReason((String) payload.get("escalationReason"));
             model.setLastUpdatedAt(LocalDateTime.now());
             incidentReadRepository.save(model);
+            webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+            webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
             log.info("Updated incident to ESCALATED: id={}", model.getId());
 
         }, () -> log.warn("Incident not found for escalation: id={}", event.getIncidentId()));
@@ -68,6 +74,8 @@ public class IncidentEventConsumer {
             model.setResolvedAt(toLocalDateTime(payload.get("resolvedAt")));
             model.setLastUpdatedAt(LocalDateTime.now());
             incidentReadRepository.save(model);
+            webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+            webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
             log.info("Updated incident to RESOLVED: id={}", model.getId());
         }, () -> log.warn("Incident not found for resolution: id={}", event.getIncidentId()));
     }
@@ -81,6 +89,8 @@ public class IncidentEventConsumer {
             model.setStatus(IncidentStatus.valueOf((String) payload.get("status")));
             model.setLastUpdatedAt(LocalDateTime.now());
             incidentReadRepository.save(model);
+            webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+            webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
             log.info("Updated incident status to {}: id={}", model.getStatus(), model.getId());
         }, () -> log.warn("Incident not found for status update: id={}", event.getIncidentId()));
     }
