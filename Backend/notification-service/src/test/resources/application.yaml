@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: notification-service-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+twilio:
+  account-sid: ACtest1234567890123456789012345678
+  auth-token: testtoken1234567890123456789012
+  from-number: whatsapp:+14155238886
+  to-number: whatsapp:+919876543210
