@@ -13,13 +13,13 @@ import org.springframework.context.annotation.Configuration;
 @Getter
 public class TwilioConfig {
 
-    private String accountId ;
+    private String accountSID ;
     private String authToken ;
     private String fromNumber ;
     private String toNumber ;
 
     @PostConstruct
     public  void init(){
-        Twilio.init(accountId , authToken);
+        Twilio.init(accountSID , authToken);
     }
 }
