@@ -69,9 +69,9 @@ public class IncidentService {
         return toResponse(saved);
 
     }
-       // propose action
+    // propose action
     @Transactional
-    public RemediationActionResponse proposeResponse(Long id , ActionProposed request){
+    public RemediationActionResponse proposeResponse(Long id , ActionProposed request ){
         Incident incident  = incidentRep.findById(id)
                 .orElseThrow(()-> new IncidentNotFoundException(id));
 
@@ -85,8 +85,8 @@ public class IncidentService {
         RemediationAction saved = actionRepository.save(action);
         log.info("Action proposed: incidentId={}, actionId={}, type={}",
                 id, saved.getId(), saved.getActionType());
-        publishEvent(TOPIC_ACTION_PROPOSED , id , toResponseRemediation(saved));
-        return toResponseRemediation(saved);
+        publishEvent(TOPIC_ACTION_PROPOSED , id , toResponseRemediation(saved, incident.getServiceName()));
+        return toResponseRemediation(saved, incident.getServiceName());
 
     }
     //approve action
@@ -107,8 +107,8 @@ public class IncidentService {
         log.info("Action approved: incidentId={}, actionId={}, approvedBy={}",
                 id, actionId, request.getApprovedBy());
 
-        publishEvent(KafkaTopicConfig.TOPIC_ACTION_APPROVED , id , toResponseRemediation(action));
-        return toResponseRemediation(action);
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_APPROVED , id , toResponseRemediation(action,incident.getServiceName()));
+        return toResponseRemediation(action,incident.getServiceName());
     }
 
     //execute Action
@@ -128,8 +128,8 @@ public class IncidentService {
         transitionStatus(incident , IncidentStatus.EXECUTING);
         log.info("Action executed: incidentId={}, actionId={}", id, actionId);
 
-        publishEvent(KafkaTopicConfig.TOPIC_ACTION_EXECUTED , id , toResponseRemediation(action));
-        return toResponseRemediation(action);
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_EXECUTED , id , toResponseRemediation(action , incident.getServiceName()));
+        return toResponseRemediation(action,incident.getServiceName());
 
     }
 
@@ -158,10 +158,10 @@ public class IncidentService {
         transitionStatus(incident , IncidentStatus.ROLLBACK);
         log.info("Action rolled back: incidentId={}, actionId={}", id, actionId);
 
-        publishEvent(KafkaTopicConfig.TOPIC_ACTION_ROLLED_BACK , id , toResponseRemediation(action));
-        publishEvent(KafkaTopicConfig.TOPIC_ACTION_PROPOSED, id, toResponseRemediation(rollbackAction));
-        publishEvent(KafkaTopicConfig.TOPIC_ACTION_EXECUTED, id, toResponseRemediation(rollbackAction));
-        return  toResponseRemediation( action);
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_ROLLED_BACK , id , toResponseRemediation(action,incident.getServiceName()));
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_PROPOSED, id, toResponseRemediation(rollbackAction,incident.getServiceName()));
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_EXECUTED, id, toResponseRemediation(rollbackAction,incident.getServiceName()));
+        return  toResponseRemediation( action,incident.getServiceName());
 
     }
 
@@ -201,10 +201,10 @@ public class IncidentService {
 
     // get Incident
 
-     public  IncidentResponse getIncident(Long id ){
+    public  IncidentResponse getIncident(Long id ){
         Incident incident = findIncidentOrThrow(id);
         return toResponse(incident);
-     }
+    }
     //-------------------------------------------------------------------------------------------------------------
 
     private void publishEvent(String topic , Long id , Object payload ){
@@ -231,10 +231,11 @@ public class IncidentService {
                 .build();
     }
 
-    private RemediationActionResponse toResponseRemediation(RemediationAction action){
+    private RemediationActionResponse toResponseRemediation(RemediationAction action , String serviceName ){
         return RemediationActionResponse.builder()
                 .id(action.getId())
                 .incidentId(action.getIncidentId())
+                .serviceName(serviceName)
                 .actionType(action.getActionType())
                 .rationale(action.getRationale())
                 .status(action.getStatus())
