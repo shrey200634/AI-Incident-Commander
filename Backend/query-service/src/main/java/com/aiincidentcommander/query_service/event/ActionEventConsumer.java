@@ -6,6 +6,7 @@ import com.aiincidentcommander.query_service.model.ActionStatus;
 import com.aiincidentcommander.query_service.model.IncidentStatus;
 import com.aiincidentcommander.query_service.repo.ActionReadRepo;
 import com.aiincidentcommander.query_service.repo.IncidentReadRepository;
+import com.aiincidentcommander.query_service.websocket.WebSocketEventRelay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -23,6 +24,8 @@ public class ActionEventConsumer {
     private final ObjectMapper objectMapper;
     private final ActionReadRepo actionReadRepo;
     private final IncidentReadRepository incidentReadRepository;
+    private final WebSocketEventRelay webSocketEventRelay;
+
 
 
     // action events
@@ -42,6 +45,8 @@ public class ActionEventConsumer {
                 .build();
 
         actionReadRepo.save(model);
+        webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+        webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
         log.info("Saved action read model: id={}", model.getId());
     }
 
@@ -64,6 +69,8 @@ public class ActionEventConsumer {
                 incident.setStatus(IncidentStatus.WAITING_APPROVAL);
                 incident.setLastUpdatedAt(LocalDateTime.now());
                 incidentReadRepository.save(incident);
+                webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+                webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
                 log.info("Updated incident status to WAITING_APPROVAL: id={}", incident.getId());
             });
         }, () -> log.warn("Action not found for approval: id={}", actionId));
@@ -80,12 +87,15 @@ public class ActionEventConsumer {
             model.setExecutedAt(toLocalDateTime(payload.get("executedAt")));
             model.setLastUpdatedAt(LocalDateTime.now());
             actionReadRepo.save(model);
+
             log.info("Updated action to EXECUTED: id={}", actionId);
 
             incidentReadRepository.findById(event.getIncidentId()).ifPresent(incident -> {
                 incident.setStatus(IncidentStatus.EXECUTING);
                 incident.setLastUpdatedAt(LocalDateTime.now());
                 incidentReadRepository.save(incident);
+                webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+                webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
                 log.info("Updated incident status to EXECUTING: id={}", incident.getId());
             });
         }, () -> log.warn("Action not found for execution: id={}", actionId));
@@ -108,6 +118,8 @@ public class ActionEventConsumer {
                 incident.setStatus(IncidentStatus.ROLLBACK);
                 incident.setLastUpdatedAt(LocalDateTime.now());
                 incidentReadRepository.save(incident);
+                webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+                webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
                 log.info("Updated incident status to ROLLBACK: id={}", incident.getId());
             });
         }, () -> log.warn("Action not found for rollback: id={}", actionId));
