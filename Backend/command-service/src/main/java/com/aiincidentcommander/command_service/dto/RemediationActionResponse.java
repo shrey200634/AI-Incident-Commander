@@ -1,13 +1,15 @@
 package com.aiincidentcommander.command_service.dto;
 
 import com.aiincidentcommander.command_service.model.ActionStatus;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Builder
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class RemediationActionResponse {
 
     private Long id;

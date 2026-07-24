@@ -2,6 +2,11 @@ server:
   port: 8081
 
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
   config:
     import: optional:file:.env[.properties]
 

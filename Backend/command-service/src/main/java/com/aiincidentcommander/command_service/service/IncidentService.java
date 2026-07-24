@@ -95,6 +95,11 @@ public class IncidentService {
         Incident incident  = incidentRep.findById(id)
                 .orElseThrow(()-> new IncidentNotFoundException(id));
 
+        if (incident.getStatus() ==IncidentStatus.NEW){
+            transitionStatus(incident, IncidentStatus.INVESTIGATING);
+        }
+        transitionStatus(incident,IncidentStatus.ACTION_PROPOSED);
+
         RemediationAction action = RemediationAction.builder()
                 .incidentId(incident.getId())
                 .actionType(request.getActionType())
