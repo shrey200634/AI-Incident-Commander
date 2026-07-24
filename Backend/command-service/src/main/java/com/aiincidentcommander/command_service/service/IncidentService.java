@@ -35,6 +35,7 @@ public class IncidentService {
     private final RemediationActionRepository actionRepository ;
     private final KafkaEventPublisher kafkaEventPublisher ;
     private final DockerExecutionService dockerExecutionService;
+    private  final KafkaAdminService kafkaAdminService;
 
     private   final AtomicLong sequenceCounter = new AtomicLong(0);
 
@@ -169,11 +170,15 @@ public class IncidentService {
         return toResponseRemediation(action,incident.getServiceName());
     }
     private boolean performRealAction(String actionType, String serviceName) {
-        if ("RESTART_SERVICE".equalsIgnoreCase(actionType)) {
-            return dockerExecutionService.restartService(serviceName);
-        }
-        log.warn("No real execution implemented for actionType={}, treating as no-op", actionType);
-        return true;
+        return switch (actionType.toUpperCase()) {
+            case "RESTART_SERVICE" -> dockerExecutionService.restartService(serviceName);
+            case "SCALE_WORKER_PODS" -> dockerExecutionService.scaleWorkerPods(serviceName, 3); // fixed replica count for now
+            case "CLEAR_DEAD_LETTER_QUEUE" -> kafkaAdminService.clearDeadLetterQueue(serviceName + ".dlq");
+            default -> {
+                log.error("Unknown/unimplemented actionType={}, refusing to silently succeed", actionType);
+                yield false;
+            }
+        };
     }
 
 
