@@ -30,7 +30,6 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-
 management:
   endpoints:
     web:
@@ -40,3 +39,8 @@ management:
 logging:
   level:
     com.aiincidentcommander: ERROR
+
+docker:
+  host: ${DOCKER_HOST}
+  compose:
+    project-dir: ${DOCKER_COMPOSE_DIR}
