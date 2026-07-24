@@ -5,7 +5,6 @@ public enum ActionStatus {
     APPROVED,
     REJECTED,
     EXECUTED,
-    FAILED,
-    ROLLED_BACK
+    ROLLED_BACK,
 }
 

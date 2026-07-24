@@ -44,7 +44,7 @@ public class IncidentService {
             IncidentStatus.NEW, Set.of(IncidentStatus.INVESTIGATING, IncidentStatus.ESCALATED),
             IncidentStatus.INVESTIGATING, Set.of(IncidentStatus.ACTION_PROPOSED, IncidentStatus.ESCALATED),
             IncidentStatus.ACTION_PROPOSED, Set.of(IncidentStatus.WAITING_APPROVAL, IncidentStatus.ESCALATED),
-            IncidentStatus.WAITING_APPROVAL, Set.of(IncidentStatus.EXECUTING, IncidentStatus.ESCALATED),
+            IncidentStatus.WAITING_APPROVAL, Set.of(IncidentStatus.EXECUTING, IncidentStatus.ESCALATED, IncidentStatus.INVESTIGATING),
             IncidentStatus.EXECUTING, Set.of(IncidentStatus.MONITORING, IncidentStatus.ROLLBACK, IncidentStatus.ESCALATED),
             IncidentStatus.MONITORING, Set.of(IncidentStatus.RESOLVED, IncidentStatus.ROLLBACK, IncidentStatus.ESCALATED),
             IncidentStatus.ROLLBACK, Set.of(IncidentStatus.INVESTIGATING, IncidentStatus.ESCALATED),
@@ -69,6 +69,26 @@ public class IncidentService {
         return toResponse(saved);
 
     }
+
+    @Transactional
+    public RemediationActionResponse rejectAction(Long id, Long actionId, RejectActionRequest request){
+        Incident incident = findIncidentOrThrow(id);
+        RemediationAction action = findActionOrThrow(actionId);
+
+        if (action.getStatus() != ActionStatus.PROPOSED){
+            throw new InvalidStateTransitionException(action.getStatus().name(), ActionStatus.REJECTED.name());
+        }
+        action.setStatus(ActionStatus.REJECTED);
+        actionRepository.save(action);
+
+        transitionStatus(incident, IncidentStatus.INVESTIGATING);
+        log.info("Action rejected: incidentId={}, actionId={}, reason={}", id, actionId, request.getReason());
+
+        publishEvent(KafkaTopicConfig.TOPIC_ACTION_REJECTED, id, toResponseRemediation(action, incident.getServiceName()));
+        return toResponseRemediation(action, incident.getServiceName());
+    }
+
+
     // propose action
     @Transactional
     public RemediationActionResponse proposeResponse(Long id , ActionProposed request ){

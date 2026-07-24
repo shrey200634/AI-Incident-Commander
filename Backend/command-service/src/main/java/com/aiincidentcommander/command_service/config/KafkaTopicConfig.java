@@ -9,6 +9,7 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 
     public static final String TOPIC_INCIDENT_CREATED = "incident.created";
+    public static final String TOPIC_ACTION_REJECTED = "action.rejected";
     public static final String TOPIC_ACTION_PROPOSED = "action.proposed";
     public static final String TOPIC_ACTION_APPROVED = "action.approved";
     public static final String TOPIC_ACTION_EXECUTED = "action.executed";
@@ -20,6 +21,14 @@ public class KafkaTopicConfig {
     @Bean
     public NewTopic incidentCreatedTopic() {
         return TopicBuilder.name(TOPIC_INCIDENT_CREATED)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic rejectAction(){
+        return TopicBuilder.name(TOPIC_ACTION_REJECTED)
                 .partitions(3)
                 .replicas(1)
                 .build();

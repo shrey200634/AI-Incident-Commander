@@ -24,6 +24,15 @@ public class IncidentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/{id}/actions/{actionId}/reject")
+    public ResponseEntity<RemediationActionResponse> rejectAction(
+            @PathVariable("id") Long id,
+            @PathVariable("actionId") Long actionId,
+            @RequestBody RejectActionRequest request) {
+        RemediationActionResponse response = service.rejectAction(id, actionId, request);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{id}/actions")
     public  ResponseEntity<RemediationActionResponse> proposeAction (
             @PathVariable("id") Long id ,
