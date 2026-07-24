@@ -1,6 +1,5 @@
 package com.aiincidentcommander.notification_service.service;
 
-import com.aiincidentcommander.notification_service.config.TwilioConfig;
 import com.aiincidentcommander.notification_service.model.NotificationLog;
 import com.aiincidentcommander.notification_service.model.NotificationStatus;
 import com.aiincidentcommander.notification_service.repository.NotificationLogRepository;

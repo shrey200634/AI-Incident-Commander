@@ -1,6 +1,6 @@
 package com.aiincidentcommander.notification_service.event;
 
-import com.aiincidentcommander.notification_service.service.WhatsAppNotificationService;
+import com.aiincidentcommander.notification_service.service.EmailNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -13,7 +13,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationEventListener {
 
-    private final WhatsAppNotificationService whatsAppService;
+    private final EmailNotificationService emailNotificationService;
 
     @KafkaListener(topics = "action.proposed", groupId = "notification-service-group")
     public void onActionProposed(IncidentEvent event) {
@@ -27,7 +27,7 @@ public class NotificationEventListener {
                 event.getIncidentId(), serviceName, actionType
         );
 
-        whatsAppService.send(event.getIncidentId(), "action.proposed", message);
+        emailNotificationService.send(event.getIncidentId(), "action.proposed", message);
     }
 
     @KafkaListener(topics = "action.rolled_back", groupId = "notification-service-group")
@@ -39,7 +39,7 @@ public class NotificationEventListener {
                 event.getIncidentId()
         );
 
-        whatsAppService.send(event.getIncidentId(), "action.rolled_back", message);
+        emailNotificationService.send(event.getIncidentId(), "action.rolled_back", message);
     }
 
     @KafkaListener(topics = "incident.escalated", groupId = "notification-service-group")
@@ -53,7 +53,7 @@ public class NotificationEventListener {
                 event.getIncidentId(), serviceName
         );
 
-        whatsAppService.send(event.getIncidentId(), "incident.escalated", message);
+        emailNotificationService.send(event.getIncidentId(), "incident.escalated", message);
     }
 
     @SuppressWarnings("unchecked")
