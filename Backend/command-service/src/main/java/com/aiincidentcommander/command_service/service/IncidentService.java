@@ -34,6 +34,7 @@ public class IncidentService {
     private final IncidentRep incidentRep ;
     private final RemediationActionRepository actionRepository ;
     private final KafkaEventPublisher kafkaEventPublisher ;
+    private final DockerExecutionService dockerExecutionService;
 
     private   final AtomicLong sequenceCounter = new AtomicLong(0);
 
@@ -136,6 +137,10 @@ public class IncidentService {
         return toResponseRemediation(action,incident.getServiceName());
     }
 
+
+
+
+
     //execute Action
 
     @Transactional
@@ -146,6 +151,13 @@ public class IncidentService {
         if (action.getStatus()!= ActionStatus.APPROVED){
             throw new InvalidStateTransitionException(action.getStatus().name(), ActionStatus.EXECUTED.name());
         }
+
+        boolean executionSucceeded = performRealAction(action.getActionType(), incident.getServiceName());
+        if (!executionSucceeded) {
+            log.error("Real execution failed for incidentId={}, actionId={}, type={}",
+                    id, actionId, action.getActionType());
+            throw new RuntimeException("Execution failed: could not perform " + action.getActionType());
+        }
         action.setStatus(ActionStatus.EXECUTED);
         action.setExecutedAt(LocalDateTime.now() );
         actionRepository.save(action);
@@ -155,8 +167,17 @@ public class IncidentService {
 
         publishEvent(KafkaTopicConfig.TOPIC_ACTION_EXECUTED , id , toResponseRemediation(action , incident.getServiceName()));
         return toResponseRemediation(action,incident.getServiceName());
-
     }
+    private boolean performRealAction(String actionType, String serviceName) {
+        if ("RESTART_SERVICE".equalsIgnoreCase(actionType)) {
+            return dockerExecutionService.restartService(serviceName);
+        }
+        log.warn("No real execution implemented for actionType={}, treating as no-op", actionType);
+        return true;
+    }
+
+
+
 
     //roll-back
     @Transactional

@@ -40,3 +40,6 @@ management:
 logging:
   level:
     com.aiincidentcommander: ERROR
+
+docker:
+  host: ${DOCKER_HOST}
