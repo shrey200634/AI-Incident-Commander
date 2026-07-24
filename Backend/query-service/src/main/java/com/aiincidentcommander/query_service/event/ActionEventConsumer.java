@@ -50,6 +50,29 @@ public class ActionEventConsumer {
         log.info("Saved action read model: id={}", model.getId());
     }
 
+    @KafkaListener(topics = "action.rejected", groupId = "query-service-group")
+    public void onActionRejected(IncidentEvent event) {
+        log.info("Received action.rejected: incidentId={}", event.getIncidentId());
+
+        Map<String, Object> payload = toMap(event.getPayload());
+        Long actionId = toLong(payload.get("id"));
+        actionReadRepo.findById(actionId).ifPresentOrElse(model -> {
+            model.setStatus(ActionStatus.REJECTED);
+            model.setLastUpdatedAt(LocalDateTime.now());
+            actionReadRepo.save(model);
+            log.info("Updated action to REJECTED: id={}", actionId);
+
+            incidentReadRepository.findById(event.getIncidentId()).ifPresent(incident -> {
+                incident.setStatus(IncidentStatus.INVESTIGATING);
+                incident.setLastUpdatedAt(LocalDateTime.now());
+                incidentReadRepository.save(incident);
+                webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
+                webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
+                log.info("Updated incident status to INVESTIGATING: id={}", incident.getId());
+            });
+        }, () -> log.warn("Action not found for rejection: id={}", actionId));
+    }
+
     @KafkaListener(topics = "action.approved", groupId = "query-service-group")
     public void onActionApproved(IncidentEvent event) {
         log.info("Received action.approved: incidentId={}", event.getIncidentId());
