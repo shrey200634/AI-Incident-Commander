@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: command-service
+              uri: http://localhost:8081
+              predicates:
+                - Path=/api/incidents/**
+
+            - id: query-service-rest
+              uri: http://localhost:8082
+              predicates:
+                - Path=/api/query/**
+
+            - id: agent-service
+              uri: http://localhost:8083
+              predicates:
+                - Path=/api/agent/**
+
