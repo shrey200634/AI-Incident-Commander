@@ -25,6 +25,8 @@ public class IncidentEventConsumer {
     // incident event
     @KafkaListener(topics = "incident.created", groupId = "query-service-group")
     public void onIncidentCreated(IncidentEvent event) {
+
+
         log.info("Received incident.created: incidentId={}", event.getIncidentId());
         Map<String , Object> payload = toMap(event.getPayload());
 

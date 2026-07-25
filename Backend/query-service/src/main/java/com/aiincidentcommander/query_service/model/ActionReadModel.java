@@ -16,26 +16,31 @@ public class ActionReadModel {
     @Id
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "incident_id", nullable = false)
     private Long incidentId;
 
-    @Column(nullable = false)
+    @Column(name = "action_type", nullable = false)
     private String actionType;
 
-    @Column(length = 1000)
+    @Column(name = "rationale", length = 1000)
     private String rationale;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private ActionStatus status;
 
+    @Column(name = "approved_by")
     private String approvedBy;
+
+    @Column(name = "executed_at")
     private LocalDateTime executedAt;
+
+    @Column(name = "rollback_of")
     private Long rollbackOf;
 
-    @Column(nullable = false)
-
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
 }

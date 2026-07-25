@@ -89,4 +89,80 @@ public class KafkaTopicConfig {
                 .replicas(1)
                 .build();
     }
+
+    @Bean
+    public NewTopic incidentCreatedDlq() {
+        return TopicBuilder.name(TOPIC_INCIDENT_CREATED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic actionRejectedDlq() {
+        return TopicBuilder.name(TOPIC_ACTION_REJECTED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic actionProposedDlq() {
+        return TopicBuilder.name(TOPIC_ACTION_PROPOSED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic actionApprovedDlq() {
+        return TopicBuilder.name(TOPIC_ACTION_APPROVED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic actionExecutedDlq() {
+        return TopicBuilder.name(TOPIC_ACTION_EXECUTED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic actionRolledBackDlq() {
+        return TopicBuilder.name(TOPIC_ACTION_ROLLED_BACK + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic incidentEscalatedDlq() {
+        return TopicBuilder.name(TOPIC_INCIDENT_ESCALATED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic incidentResolvedDlq() {
+        return TopicBuilder.name(TOPIC_INCIDENT_RESOLVED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic incidentStatusUpdatedDlq() {
+        return TopicBuilder.name(TOPIC_INCIDENT_STATUS_UPDATED + ".dlq")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
 }
+
+
+
+
