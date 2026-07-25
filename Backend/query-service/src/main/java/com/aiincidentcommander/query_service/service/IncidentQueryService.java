@@ -11,8 +11,10 @@ import com.aiincidentcommander.query_service.repo.ActionReadRepo;
 import com.aiincidentcommander.query_service.repo.IncidentReadRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 
 @Service
@@ -22,6 +24,15 @@ public class IncidentQueryService {
 
     private final IncidentReadRepository incidentReadRepository ;
     private final ActionReadRepo actionReadRepo;
+    private final RedisTemplate<String , Object> redisTemplate;
+
+    private static final String ACTIVE_INCIDENT_KEY = "incident:active";
+    private static final Duration ACTIVE_TTL = Duration.ofSeconds(5);
+    private static final String INCIDENT_KEY_PREFIX = "incident:";
+    private static  final Duration INCIDENT_TTL = Duration.ofSeconds(10);
+
+
+
 
     //get all the incident
     public List<IncidentReadDto> getAllIncident (){
@@ -34,9 +45,19 @@ public class IncidentQueryService {
 
     // get Incident by id
     public  IncidentReadDto getIncidentById (Long id ){
-        log.info("fetching incident : id={}" , id);
-        IncidentReadModel incident = findOrThrow(id);
-        return toDTO(incident);
+       String cacheKey = INCIDENT_KEY_PREFIX + id;
+       Object cached = redisTemplate.opsForValue().get(cacheKey);
+       if (cached!= null){
+           log.info("Cache hit: incident id={}", id);
+           return (IncidentReadDto) cached;
+       }
+        log.info("Cache miss, fetching incident from DB: id={}", id);
+       IncidentReadModel incidentReadModel = findOrThrow(id);
+       IncidentReadDto dto = toDTO(incidentReadModel);
+
+       redisTemplate.opsForValue().set(cacheKey , dto , INCIDENT_TTL);
+       return dto;
+
     }
 
     //get Incident details
@@ -82,8 +103,15 @@ public class IncidentQueryService {
 
 
     //get active (non resolved / non esclated )
-    public List<IncidentReadDto> getActiveIncident(){
-        log.info("fetching active incident ");
+    @SuppressWarnings("unchecked")
+    public List<IncidentReadDto> getActiveIncident() {
+        Object cached = redisTemplate.opsForValue().get(ACTIVE_INCIDENT_KEY);
+        if (cached != null) {
+            log.info("Cache hit: active incidents");
+            return (List<IncidentReadDto>) cached;
+        }
+
+        log.info("Cache miss, fetching active incidents from DB");
         List<IncidentStatus> activeStatus = List.of(
                 IncidentStatus.NEW,
                 IncidentStatus.INVESTIGATING,
@@ -93,11 +121,16 @@ public class IncidentQueryService {
                 IncidentStatus.MONITORING,
                 IncidentStatus.ROLLBACK
         );
-        return incidentReadRepository.findByStatusIn(activeStatus)
+        List<IncidentReadDto> result = incidentReadRepository.findByStatusIn(activeStatus)
                 .stream()
                 .map(this::toDTO)
                 .toList();
+
+        redisTemplate.opsForValue().set(ACTIVE_INCIDENT_KEY, result, ACTIVE_TTL);
+        return result;
     }
+
+
 
     //helper--------------------------------------------------------------------------------------------------
     private IncidentReadModel findOrThrow(Long id ){
@@ -131,5 +164,13 @@ public class IncidentQueryService {
                 .createdAt(model.getCreatedAt())
                 .lastUpdatedAt(model.getLastUpdatedAt())
                 .build();
+    }
+
+
+
+// called by the Kafka consumers on any write, so the cache never serves stale
+    public void evictIncidentCache(Long id) {
+        redisTemplate.delete(INCIDENT_KEY_PREFIX + id);
+        redisTemplate.delete(ACTIVE_INCIDENT_KEY);
     }
 }
