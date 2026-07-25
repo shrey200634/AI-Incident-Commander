@@ -31,6 +31,7 @@ public class IncidentEventConsumer {
         Map<String , Object> payload = toMap(event.getPayload());
 
         IncidentReadModel model = IncidentReadModel.builder()
+                .lastSequenceNumber(event.getSequenceNumber())
                 .id(toLong(payload.get("id")))
                 .serviceName((String) payload.get("serviceName"))
                 .severity((String) payload.get("severity"))
@@ -55,6 +56,12 @@ public class IncidentEventConsumer {
         Map<String , Object> payload = toMap(event.getPayload());
 
         incidentReadRepository.findById(event.getIncidentId()).ifPresentOrElse(model -> {
+            if (!isNextInSequence(model.getLastSequenceNumber(), event.getSequenceNumber())) {
+                log.warn("Discarding out-of-sequence incident.escalated: incidentId={}, lastSeq={}, incomingSeq={}",
+                        event.getIncidentId(), model.getLastSequenceNumber(), event.getSequenceNumber());
+                return;
+            }
+            model.setLastSequenceNumber(event.getSequenceNumber());
             model.setStatus(IncidentStatus.ESCALATED);
             model.setEscalationReason((String) payload.get("escalationReason"));
             model.setLastUpdatedAt(LocalDateTime.now());
@@ -74,9 +81,16 @@ public class IncidentEventConsumer {
         log.info("Received incident.resolved: incidentId={}", event.getIncidentId());
         Map<String, Object> payload = toMap(event.getPayload());
         incidentReadRepository.findById(event.getIncidentId()).ifPresentOrElse(model -> {
+            if (!isNextInSequence(model.getLastSequenceNumber(), event.getSequenceNumber())) {
+                log.warn("Discarding out-of-sequence incident.resolved: incidentId={}, lastSeq={}, incomingSeq={}",
+                        event.getIncidentId(), model.getLastSequenceNumber(), event.getSequenceNumber());
+                return;
+            }
+            model.setLastSequenceNumber(event.getSequenceNumber());
             model.setStatus(IncidentStatus.RESOLVED);
             model.setResolvedAt(toLocalDateTime(payload.get("resolvedAt")));
             model.setLastUpdatedAt(LocalDateTime.now());
+            model.setLastSequenceNumber(event.getSequenceNumber());   // ADD THIS — right after setLastUpdatedAt
             incidentReadRepository.save(model);
             incidentQueryService.evictIncidentCache(model.getId());
             webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
@@ -85,12 +99,21 @@ public class IncidentEventConsumer {
         }, () -> log.warn("Incident not found for resolution: id={}", event.getIncidentId()));
     }
 
+
+
     @KafkaListener(topics = "incident.status_updated", groupId = "query-service-group")
     public void onIncidentStatusUpdated(IncidentEvent event) {
         log.info("Received incident.status_updated: incidentId={}", event.getIncidentId());
         Map<String, Object> payload = toMap(event.getPayload());
 
         incidentReadRepository.findById(event.getIncidentId()).ifPresentOrElse(model -> {
+
+            if (!isNextInSequence(model.getLastSequenceNumber(), event.getSequenceNumber())) {
+                log.warn("Discarding out-of-sequence incident.status_updated: incidentId={}, lastSeq={}, incomingSeq={}",
+                        event.getIncidentId(), model.getLastSequenceNumber(), event.getSequenceNumber());
+                return;
+            }
+            model.setLastSequenceNumber(event.getSequenceNumber());
             model.setStatus(IncidentStatus.valueOf((String) payload.get("status")));
             model.setLastUpdatedAt(LocalDateTime.now());
             incidentReadRepository.save(model);
@@ -116,5 +139,11 @@ public class IncidentEventConsumer {
     private LocalDateTime toLocalDateTime(Object value) {
         if (value == null) return null;
         return objectMapper.convertValue(value, LocalDateTime.class);
+    }
+
+    private boolean isNextInSequence(Long lastSeq, Long incomingSeq) {
+        if (lastSeq == null) return true;
+        if (incomingSeq == null) return false;
+        return incomingSeq > lastSeq;
     }
 }

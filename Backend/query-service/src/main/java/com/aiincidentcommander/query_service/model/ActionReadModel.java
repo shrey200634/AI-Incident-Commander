@@ -43,4 +43,7 @@ public class ActionReadModel {
 
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
+
+    @Column(name = "last_sequence_number")
+    private Long lastSequenceNumber;
 }
