@@ -3,6 +3,7 @@ package com.aiincidentcommander.query_service.event;
 import com.aiincidentcommander.query_service.model.IncidentReadModel;
 import com.aiincidentcommander.query_service.model.IncidentStatus;
 import com.aiincidentcommander.query_service.repo.IncidentReadRepository;
+import com.aiincidentcommander.query_service.service.IncidentQueryService;
 import com.aiincidentcommander.query_service.websocket.WebSocketEventRelay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +22,11 @@ public class IncidentEventConsumer {
     private final IncidentReadRepository incidentReadRepository;
     private final ObjectMapper objectMapper;
     private final WebSocketEventRelay webSocketEventRelay;
+    private final IncidentQueryService incidentQueryService;
 
     // incident event
     @KafkaListener(topics = "incident.created", groupId = "query-service-group")
     public void onIncidentCreated(IncidentEvent event) {
-
-
         log.info("Received incident.created: incidentId={}", event.getIncidentId());
         Map<String , Object> payload = toMap(event.getPayload());
 
@@ -40,6 +40,7 @@ public class IncidentEventConsumer {
                 .build();
 
         incidentReadRepository.save(model);
+        incidentQueryService.evictIncidentCache(model.getId());
         log.info("Saved incident read model: id={}", model.getId());
         webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
         webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
@@ -58,6 +59,7 @@ public class IncidentEventConsumer {
             model.setEscalationReason((String) payload.get("escalationReason"));
             model.setLastUpdatedAt(LocalDateTime.now());
             incidentReadRepository.save(model);
+            incidentQueryService.evictIncidentCache(model.getId());
             webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
             webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
             log.info("Updated incident to ESCALATED: id={}", model.getId());
@@ -76,6 +78,7 @@ public class IncidentEventConsumer {
             model.setResolvedAt(toLocalDateTime(payload.get("resolvedAt")));
             model.setLastUpdatedAt(LocalDateTime.now());
             incidentReadRepository.save(model);
+            incidentQueryService.evictIncidentCache(model.getId());
             webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
             webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
             log.info("Updated incident to RESOLVED: id={}", model.getId());
@@ -91,6 +94,7 @@ public class IncidentEventConsumer {
             model.setStatus(IncidentStatus.valueOf((String) payload.get("status")));
             model.setLastUpdatedAt(LocalDateTime.now());
             incidentReadRepository.save(model);
+            incidentQueryService.evictIncidentCache(model.getId());
             webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
             webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
             log.info("Updated incident status to {}: id={}", model.getStatus(), model.getId());

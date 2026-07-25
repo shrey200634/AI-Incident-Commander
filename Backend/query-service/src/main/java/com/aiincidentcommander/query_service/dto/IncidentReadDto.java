@@ -1,13 +1,15 @@
 package com.aiincidentcommander.query_service.dto;
 
 import com.aiincidentcommander.query_service.model.IncidentStatus;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Builder
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class IncidentReadDto {
     private Long id ;
     private String serviceName  ;

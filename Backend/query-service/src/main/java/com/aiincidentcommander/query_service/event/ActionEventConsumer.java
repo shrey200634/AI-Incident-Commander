@@ -6,6 +6,7 @@ import com.aiincidentcommander.query_service.model.ActionStatus;
 import com.aiincidentcommander.query_service.model.IncidentStatus;
 import com.aiincidentcommander.query_service.repo.ActionReadRepo;
 import com.aiincidentcommander.query_service.repo.IncidentReadRepository;
+import com.aiincidentcommander.query_service.service.IncidentQueryService;
 import com.aiincidentcommander.query_service.websocket.WebSocketEventRelay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class ActionEventConsumer {
     private final ActionReadRepo actionReadRepo;
     private final IncidentReadRepository incidentReadRepository;
     private final WebSocketEventRelay webSocketEventRelay;
+    private final IncidentQueryService incidentQueryService;
 
 
 
@@ -66,6 +68,7 @@ public class ActionEventConsumer {
                 incident.setStatus(IncidentStatus.INVESTIGATING);
                 incident.setLastUpdatedAt(LocalDateTime.now());
                 incidentReadRepository.save(incident);
+                incidentQueryService.evictIncidentCache(incident.getId());
                 webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
                 webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
                 log.info("Updated incident status to INVESTIGATING: id={}", incident.getId());
@@ -92,6 +95,7 @@ public class ActionEventConsumer {
                 incident.setStatus(IncidentStatus.WAITING_APPROVAL);
                 incident.setLastUpdatedAt(LocalDateTime.now());
                 incidentReadRepository.save(incident);
+                incidentQueryService.evictIncidentCache(incident.getId());
                 webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
                 webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
                 log.info("Updated incident status to WAITING_APPROVAL: id={}", incident.getId());
@@ -117,6 +121,7 @@ public class ActionEventConsumer {
                 incident.setStatus(IncidentStatus.EXECUTING);
                 incident.setLastUpdatedAt(LocalDateTime.now());
                 incidentReadRepository.save(incident);
+                incidentQueryService.evictIncidentCache(incident.getId());
                 webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
                 webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
                 log.info("Updated incident status to EXECUTING: id={}", incident.getId());
@@ -141,6 +146,7 @@ public class ActionEventConsumer {
                 incident.setStatus(IncidentStatus.ROLLBACK);
                 incident.setLastUpdatedAt(LocalDateTime.now());
                 incidentReadRepository.save(incident);
+                incidentQueryService.evictIncidentCache(incident.getId());
                 webSocketEventRelay.pushIncidentUpdate(event.getIncidentId(), event.getPayload());
                 webSocketEventRelay.pushActiveIncidentsUpdate(event.getPayload());
                 log.info("Updated incident status to ROLLBACK: id={}", incident.getId());

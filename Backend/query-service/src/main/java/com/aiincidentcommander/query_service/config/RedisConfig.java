@@ -1,5 +1,6 @@
 package com.aiincidentcommander.query_service.config;
 
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -15,9 +16,24 @@ public class RedisConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
         template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(GenericJacksonJsonRedisSerializer.builder().build());
+        template.setValueSerializer(
+                GenericJacksonJsonRedisSerializer.builder()
+                        .enableDefaultTyping(
+                                BasicPolymorphicTypeValidator.builder()
+                                        .allowIfSubType(Object.class)
+                                        .build()
+                        )
+                        .build()
+        );
         template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(GenericJacksonJsonRedisSerializer.builder().build());
-        return template;
+        template.setHashValueSerializer(
+                GenericJacksonJsonRedisSerializer.builder()
+                        .enableDefaultTyping(
+                                BasicPolymorphicTypeValidator.builder()
+                                        .allowIfSubType(Object.class)
+                                        .build()
+                        )
+                        .build()
+        );        return template;
     }
 }
