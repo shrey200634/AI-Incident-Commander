@@ -44,6 +44,9 @@ spring:
       port: ${REDIS_PORT}
 
 management:
+  endpoint:
+    health:
+      enabled: true
   endpoints:
     web:
       exposure:
