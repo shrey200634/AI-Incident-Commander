@@ -37,6 +37,7 @@ public class ActionEventConsumer {
         Map<String, Object> payload = toMap(event.getPayload());
 
         ActionReadModel model = ActionReadModel.builder()
+                .lastSequenceNumber(event.getSequenceNumber())
                 .id(toLong(payload.get("id")))
                 .incidentId(toLong(payload.get("incidentId")))
                 .actionType((String) payload.get("actionType"))
@@ -52,6 +53,7 @@ public class ActionEventConsumer {
         log.info("Saved action read model: id={}", model.getId());
     }
 
+
     @KafkaListener(topics = "action.rejected", groupId = "query-service-group")
     public void onActionRejected(IncidentEvent event) {
         log.info("Received action.rejected: incidentId={}", event.getIncidentId());
@@ -59,6 +61,12 @@ public class ActionEventConsumer {
         Map<String, Object> payload = toMap(event.getPayload());
         Long actionId = toLong(payload.get("id"));
         actionReadRepo.findById(actionId).ifPresentOrElse(model -> {
+            if (!isNextInSequence(model.getLastSequenceNumber(), event.getSequenceNumber())) {
+                log.warn("Discarding out-of-sequence action.rejected: incidentId={}, lastSeq={}, incomingSeq={}",
+                        event.getIncidentId(), model.getLastSequenceNumber(), event.getSequenceNumber());
+                return;
+            }
+            model.setLastSequenceNumber(event.getSequenceNumber());
             model.setStatus(ActionStatus.REJECTED);
             model.setLastUpdatedAt(LocalDateTime.now());
             actionReadRepo.save(model);
@@ -83,7 +91,12 @@ public class ActionEventConsumer {
 
         Long actionId = toLong(payload.get("id"));
         actionReadRepo.findById(actionId).ifPresentOrElse(model -> {
-
+            if (!isNextInSequence(model.getLastSequenceNumber(), event.getSequenceNumber())) {
+                log.warn("Discarding out-of-sequence action.approved: incidentId={}, lastSeq={}, incomingSeq={}",
+                        event.getIncidentId(), model.getLastSequenceNumber(), event.getSequenceNumber());
+                return;
+            }
+            model.setLastSequenceNumber(event.getSequenceNumber());
             model.setStatus(ActionStatus.APPROVED);
             model.setApprovedBy((String) payload.get("approvedBy"));
             model.setLastUpdatedAt(LocalDateTime.now());
@@ -110,6 +123,12 @@ public class ActionEventConsumer {
         Map<String, Object> payload = toMap(event.getPayload());
         Long actionId = toLong(payload.get("id"));
         actionReadRepo.findById(actionId).ifPresentOrElse(model -> {
+            if (!isNextInSequence(model.getLastSequenceNumber(), event.getSequenceNumber())) {
+                log.warn("Discarding out-of-sequence action.executed: incidentId={}, lastSeq={}, incomingSeq={}",
+                        event.getIncidentId(), model.getLastSequenceNumber(), event.getSequenceNumber());
+                return;
+            }
+            model.setLastSequenceNumber(event.getSequenceNumber());
             model.setStatus(ActionStatus.EXECUTED);
             model.setExecutedAt(toLocalDateTime(payload.get("executedAt")));
             model.setLastUpdatedAt(LocalDateTime.now());
@@ -136,7 +155,12 @@ public class ActionEventConsumer {
         Map<String, Object> payload = toMap(event.getPayload());
         Long actionId = toLong(payload.get("id"));
         actionReadRepo.findById(actionId).ifPresentOrElse(model -> {
-
+            if (!isNextInSequence(model.getLastSequenceNumber(), event.getSequenceNumber())) {
+                log.warn("Discarding out-of-sequence action.rolled_back: incidentId={}, lastSeq={}, incomingSeq={}",
+                        event.getIncidentId(), model.getLastSequenceNumber(), event.getSequenceNumber());
+                return;
+            }
+            model.setLastSequenceNumber(event.getSequenceNumber());
             model.setStatus(ActionStatus.ROLLED_BACK);
             model.setLastUpdatedAt(LocalDateTime.now());
             actionReadRepo.save(model);
@@ -169,6 +193,12 @@ public class ActionEventConsumer {
     private LocalDateTime toLocalDateTime(Object value) {
         if (value == null) return null;
         return objectMapper.convertValue(value, LocalDateTime.class);
+    }
+
+    private boolean isNextInSequence(Long lastSeq, Long incomingSeq) {
+        if (lastSeq == null) return true;
+        if (incomingSeq == null) return false;
+        return incomingSeq > lastSeq;
     }
 
 }
