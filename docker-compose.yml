@@ -90,5 +90,67 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/workspace
 
+  notification-service:
+    build:
+      context: ./Backend/notification-service
+    container_name: aic-notification-service
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_started
+      kafka:
+        condition: service_started
+      command-service:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      ALERT_EMAIL: ${ALERT_EMAIL}
+
+  agent-service:
+    build:
+      context: ./Backend/agent-service
+    container_name: aic-agent-service
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      command-service:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      COMMAND_SERVICE_URL: http://command-service:8081
+      PROMETHEUS_URL: ${PROMETHEUS_URL}
+
+
+  api-gateway:
+    build:
+      context: ./Backend/api-gateway
+    container_name: aic-api-gateway
+    restart: unless-stopped
+    depends_on:
+      command-service:
+        condition: service_healthy
+      query-service:
+        condition: service_healthy
+      agent-service:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
 volumes:
   mysql_data:

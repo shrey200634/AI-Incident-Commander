@@ -45,10 +45,14 @@ spring:
             enable: true
 
 management:
+  endpoint:
+    health:
+      enabled: true
   endpoints:
     web:
       exposure:
         include: health,info
+
 
 alert:
   email: ${ALERT_EMAIL}
