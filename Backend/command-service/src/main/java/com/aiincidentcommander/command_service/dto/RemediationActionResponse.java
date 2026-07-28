@@ -18,5 +18,8 @@ public class RemediationActionResponse {
     private String actionType;
     private String rationale;
     private ActionStatus status;
+    private String approvedBy;
+    private LocalDateTime executedAt;
+    private Long rollbackOf;
     private LocalDateTime createdAt;
 }

@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  - job_name: 'FoodRush-Orders'
+    static_configs:
+      - targets: ['host.docker.internal:8083']
+
+  - job_name: 'Payment-Gateway'
+    static_configs:
+      - targets: ['host.docker.internal:8083']

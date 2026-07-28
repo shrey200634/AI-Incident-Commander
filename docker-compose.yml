@@ -136,6 +136,18 @@ services:
       COMMAND_SERVICE_URL: http://command-service:8081
       PROMETHEUS_URL: ${PROMETHEUS_URL}
 
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: aic-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alerts.yml:/etc/prometheus/alerts.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 
   api-gateway:
     build:

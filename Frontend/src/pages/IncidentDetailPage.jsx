@@ -47,6 +47,11 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
   const [rejectModalAction, setRejectModalAction] = useState(null);
   const [rejectReasonInput, setRejectReasonInput] = useState('Requires further metrics evaluation');
 
+  // Propose action modal
+  const [showProposeModal, setShowProposeModal] = useState(false);
+  const [proposeTypeInput, setProposeTypeInput] = useState('RESTART_SERVICE');
+  const [proposeRationaleInput, setProposeRationaleInput] = useState('High error rate detected on microservice pod');
+
   const fetchDetail = useCallback(async () => {
     try {
       setLoading(true);
@@ -108,6 +113,21 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
     executeActionCall(actionId, () =>
       commandApi.rejectAction(id, actionId, rejectReasonInput || 'Rejected')
     );
+  };
+
+  const confirmPropose = async () => {
+    setShowProposeModal(false);
+    try {
+      await commandApi.proposeAction(id, {
+        actionType: proposeTypeInput,
+        rationale: proposeRationaleInput,
+      });
+      setTimeout(fetchDetail, 300);
+      await fetchDetail();
+      refreshActiveCount();
+    } catch (err) {
+      alert(err.response?.data?.error || err.message || 'Failed to propose action');
+    }
   };
 
   const handleExecute = (actionId) => {
@@ -316,12 +336,19 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
           {/* Right: AI Remediation Actions Panel */}
           <div className="detail-sidebar-panel">
             <div className="card">
-              <div className="card-header">
+              <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Bot size={18} color="var(--accent)" />
-                  <span className="card-title">AI Remediation Proposals</span>
+                  <span className="card-title">Remediation Proposals</span>
                 </div>
-                <span className="badge badge-new">{actions.length} Actions</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="badge badge-new">{actions.length} Actions</span>
+                  {!isTerminal && (
+                    <button className="btn btn-ghost btn-sm" style={{ fontSize: '11px', padding: '2px 8px' }} onClick={() => setShowProposeModal(true)}>
+                      + Propose Action
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="card-body" style={{ padding: actions.length === 0 ? '20px' : '12px' }}>
                 {actions.length === 0 ? (
@@ -494,6 +521,47 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
               </button>
               <button className="btn btn-danger" onClick={confirmReject}>
                 <XCircle size={14} /> Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Propose Action Modal */}
+      {showProposeModal && (
+        <div className="modal-overlay" onClick={() => setShowProposeModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Propose Remediation Action</h2>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="form-label">Action Type</label>
+                <select
+                  className="form-select"
+                  value={proposeTypeInput}
+                  onChange={(e) => setProposeTypeInput(e.target.value)}
+                >
+                  <option value="RESTART_SERVICE">RESTART_SERVICE (Restart Container)</option>
+                  <option value="SCALE_WORKER_PODS">SCALE_WORKER_PODS (Scale Replicas)</option>
+                  <option value="CLEAR_DEAD_LETTER_QUEUE">CLEAR_DEAD_LETTER_QUEUE (Purge Kafka DLQ)</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Rationale</label>
+                <textarea
+                  className="form-textarea"
+                  value={proposeRationaleInput}
+                  onChange={(e) => setProposeRationaleInput(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setShowProposeModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={confirmPropose}>
+                Submit Proposal
               </button>
             </div>
           </div>

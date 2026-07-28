@@ -43,6 +43,7 @@ public class ActionEventConsumer {
                 .actionType((String) payload.get("actionType"))
                 .rationale((String) payload.get("rationale"))
                 .status(ActionStatus.valueOf((String) payload.get("status")))
+                .rollbackOf(toLong(payload.get("rollbackOf")))
                 .createdAt(toLocalDateTime(payload.get("createdAt")))
                 .lastUpdatedAt(LocalDateTime.now())
                 .build();
