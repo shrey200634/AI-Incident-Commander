@@ -1,0 +1,22 @@
+groups:
+  - name: IncidentCommanderAlerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 10s
+        labels:
+          severity: CRITICAL
+          service: FoodRush-Orders
+        annotations:
+          summary: "High 5xx error rate detected on FoodRush-Orders"
+          description: "Error rate exceeded 5% over 5m sliding window"
+
+      - alert: HighLatency
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 0.5
+        for: 10s
+        labels:
+          severity: HIGH
+          service: Payment-Gateway
+        annotations:
+          summary: "High latency detected on Payment-Gateway"
+          description: "Average latency exceeded 500ms"

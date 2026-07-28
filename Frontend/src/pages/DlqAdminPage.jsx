@@ -7,8 +7,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileCode,
-  Check,
-  Clock
+  Check
 } from 'lucide-react';
 import { formatTime } from '../utils/helpers';
 
@@ -137,7 +136,7 @@ export default function DlqAdminPage({ onDlqUpdate }) {
                       )}
                     </td>
                     <td>
-                      <span className="time-ago">{formatTime(rec.createdAt || rec.timestamp)}</span>
+                      <span className="time-ago">{formatTime(rec.failedAt || rec.createdAt)}</span>
                     </td>
                     <td>
                       <button
@@ -184,11 +183,11 @@ export default function DlqAdminPage({ onDlqUpdate }) {
                 <span className="form-label">Topic:</span>
                 <code>{selectedRecord.originalTopic}</code>
               </div>
-              {selectedRecord.exceptionMessage && (
+              {selectedRecord.errorMessage && (
                 <div style={{ marginBottom: '12px' }}>
                   <span className="form-label">Failure Exception:</span>
                   <div className="action-rationale" style={{ borderLeftColor: 'var(--color-critical)' }}>
-                    {selectedRecord.exceptionMessage}
+                    {selectedRecord.errorMessage}
                   </div>
                 </div>
               )}

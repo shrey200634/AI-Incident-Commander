@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { agentApi } from '../api/client';
 import { ShieldAlert, Activity, Database, Server, Cpu, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 
@@ -7,7 +7,7 @@ export default function TelemetryPage() {
   const [metricSnapshot, setMetricSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     setLoading(true);
     try {
       const data = await agentApi.getMetrics(selectedService);
@@ -18,11 +18,11 @@ export default function TelemetryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedService]);
 
   useEffect(() => {
     fetchMetrics();
-  }, [selectedService]);
+  }, [fetchMetrics]);
 
   const isOffline = metricSnapshot === null || metricSnapshot?.stale === true;
 

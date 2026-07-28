@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,6 +27,26 @@ public class IncidentController {
     {
         IncidentResponse response = service.createIncident(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/webhook/prometheus")
+    public ResponseEntity<List<IncidentResponse>> handlePrometheusWebhook(
+            @RequestBody PrometheusAlertPayload payload) {
+        if (payload == null || payload.getAlerts() == null || payload.getAlerts().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<IncidentResponse> createdIncidents = payload.getAlerts().stream()
+                .filter(alert -> "firing".equalsIgnoreCase(alert.getStatus()))
+                .map(alert -> {
+                    CreateIncident req = new CreateIncident();
+                    req.setServiceName(alert.getServiceName());
+                    req.setSeverity(alert.getSeverity());
+                    return service.createIncident(req);
+                })
+                .toList();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdIncidents);
     }
 
 

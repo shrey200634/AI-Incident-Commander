@@ -45,7 +45,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class )
     public  ResponseEntity<Map<String , Object>> handleGeneric(Exception ex ){
         log.error("unhandled Exception " , ex);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "something went wrong check the logs ");
+        String msg = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage() : "Something went wrong. Check backend logs.";
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, msg);
     }
 
     private ResponseEntity<Map<String , Object>> buildResponse(HttpStatus status , String message ){
