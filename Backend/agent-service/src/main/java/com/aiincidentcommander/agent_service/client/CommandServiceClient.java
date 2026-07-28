@@ -30,4 +30,14 @@ public class CommandServiceClient {
                 .body(RemediationActionResponse.class);
     }
 
+    public void createIncident(com.aiincidentcommander.agent_service.dto.CreateIncidentDto request) {
+        log.info("Auto-triggering incident for service={}: severity={}", request.getServiceName(), request.getSeverity());
+
+        restClient.post()
+                .uri("/api/incidents")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .toBodilessEntity();
     }
+}
