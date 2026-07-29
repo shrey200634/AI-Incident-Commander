@@ -29,11 +29,14 @@ public class PrometheusAlertPayload {
         private String startsAt;
 
         public String getServiceName() {
-            if (labels == null) return "unknown-service";
+            if (labels == null) return "external-service";
             if (labels.containsKey("service")) return labels.get("service");
             if (labels.containsKey("job")) return labels.get("job");
+            if (labels.containsKey("application")) return labels.get("application");
+            if (labels.containsKey("app")) return labels.get("app");
             if (labels.containsKey("instance")) return labels.get("instance");
-            return "FoodRush-Orders";
+            if (labels.containsKey("alertname")) return labels.get("alertname");
+            return "external-service";
         }
 
         public String getSeverity() {

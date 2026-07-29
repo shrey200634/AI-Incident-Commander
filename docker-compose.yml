@@ -57,8 +57,9 @@ services:
       command-service:
         condition: service_healthy
     ports:
-      - "8082:8082"
+      - "18082:8082"
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m"
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -76,8 +77,9 @@ services:
       - redis
       - kafka
     ports:
-      - "8081:8081"
+      - "18081:8081"
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m"
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -103,8 +105,9 @@ services:
       command-service:
         condition: service_healthy
     ports:
-      - "8084:8084"
+      - "18084:8084"
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m"
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -126,8 +129,9 @@ services:
       command-service:
         condition: service_healthy
     ports:
-      - "8083:8083"
+      - "18083:8083"
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -135,18 +139,21 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
       COMMAND_SERVICE_URL: http://command-service:8081
       PROMETHEUS_URL: ${PROMETHEUS_URL}
+      MONITORED_SERVICES: ${MONITORED_SERVICES}
+      ANOMALY_LATENCY_THRESHOLD_MS: ${ANOMALY_LATENCY_THRESHOLD_MS}
 
-  prometheus:
-    image: prom/prometheus:v2.51.0
-    container_name: aic-prometheus
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./alerts.yml:/etc/prometheus/alerts.yml
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+# Internal Prometheus container disabled — AI Incident Commander connects to Digg Project's Prometheus on port 9090
+#  prometheus:
+#    image: prom/prometheus:v2.51.0
+#    container_name: aic-prometheus
+#    restart: unless-stopped
+#    ports:
+#      - "9090:9090"
+#    volumes:
+#      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+#      - ./alerts.yml:/etc/prometheus/alerts.yml
+#    extra_hosts:
+#      - "host.docker.internal:host-gateway"
 
 
   api-gateway:
@@ -162,7 +169,9 @@ services:
       agent-service:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "18080:8080"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m"
 
 volumes:
   mysql_data:
