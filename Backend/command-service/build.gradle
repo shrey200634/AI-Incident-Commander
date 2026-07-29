@@ -39,8 +39,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
 	implementation 'com.github.docker-java:docker-java-core:3.4.0'
-	implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.4.0'
-
+	implementation 'com.github.docker-java:docker-java-transport-zerodep:3.4.0'
 }
 
 tasks.named('test') {
