@@ -3,7 +3,7 @@ import { commandApi } from '../api/client';
 import { X, AlertOctagon, Zap } from 'lucide-react';
 
 export default function CreateIncidentModal({ onClose, onCreated }) {
-  const [serviceName, setServiceName] = useState('FoodRush-Orders');
+  const [serviceName, setServiceName] = useState('api-service');
   const [severity, setSeverity] = useState('CRITICAL');
   const [customService, setCustomService] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,10 +57,9 @@ export default function CreateIncidentModal({ onClose, onCreated }) {
                 value={serviceName}
                 onChange={(e) => setServiceName(e.target.value)}
               >
-                <option value="FoodRush-Orders">FoodRush-Orders (High Latency / Lag)</option>
-                <option value="Payment-Gateway">Payment-Gateway (Elevated 5xx Rate)</option>
-                <option value="DistributedJobForge">DistributedJobForge (Worker Deadlock)</option>
-                <option value="Inventory-Worker">Inventory-Worker (DLQ Spillover)</option>
+                <option value="api-service">api-service (API Gateway / High Latency)</option>
+                <option value="scheduler-service">scheduler-service (Job Queue Lag)</option>
+                <option value="worker-service">worker-service (Worker Error Rate)</option>
                 <option value="custom">Custom Service...</option>
               </select>
             </div>

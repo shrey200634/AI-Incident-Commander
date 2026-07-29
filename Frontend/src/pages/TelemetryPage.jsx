@@ -3,7 +3,7 @@ import { agentApi } from '../api/client';
 import { ShieldAlert, Activity, Database, Server, Cpu, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function TelemetryPage() {
-  const [selectedService, setSelectedService] = useState('FoodRush-Orders');
+  const [selectedService, setSelectedService] = useState('api-service');
   const [metricSnapshot, setMetricSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -70,15 +70,26 @@ export default function TelemetryPage() {
           <div className="card-body">
             <div className="form-group" style={{ maxWidth: '360px', marginBottom: '20px' }}>
               <label className="form-label">Target Service Under Observation</label>
-              <select
-                className="form-select"
-                value={selectedService}
-                onChange={(e) => setSelectedService(e.target.value)}
-              >
-                <option value="FoodRush-Orders">FoodRush-Orders (Order Microservice)</option>
-                <option value="Payment-Gateway">Payment-Gateway (Payment Processing)</option>
-                <option value="DistributedJobForge">DistributedJobForge (Worker Cluster)</option>
-              </select>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter service name (e.g. digg-order-service)"
+                  value={selectedService}
+                  onChange={(e) => setSelectedService(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <select
+                  className="form-select"
+                  value={selectedService}
+                  onChange={(e) => setSelectedService(e.target.value)}
+                  style={{ width: '220px' }}
+                >
+                  <option value="api-service">api-service</option>
+                  <option value="scheduler-service">scheduler-service</option>
+                  <option value="worker-service">worker-service</option>
+                </select>
+              </div>
             </div>
 
             {loading ? (

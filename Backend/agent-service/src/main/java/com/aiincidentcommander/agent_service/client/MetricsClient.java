@@ -90,9 +90,11 @@ public class MetricsClient {
      */
     private String buildErrorRateQuery(String serviceName) {
         return String.format(
-                "sum(rate(http_requests_total{job=\"%s\",status=~\"5..\"}[5m])) / " +
-                "sum(rate(http_requests_total{job=\"%s\"}[5m])) * 100",
-                serviceName, serviceName
+                "(sum(rate(http_requests_total{job=~\"%1$s\",status=~\"5..\"}[5m])) or " +
+                "sum(rate(http_server_requests_seconds_count{job=~\"%1$s\",status=~\"5..\"}[5m])) or vector(0)) / " +
+                "(sum(rate(http_requests_total{job=~\"%1$s\"}[5m])) or " +
+                "sum(rate(http_server_requests_seconds_count{job=~\"%1$s\"}[5m])) or vector(1)) * 100",
+                serviceName
         );
     }
 
@@ -101,9 +103,11 @@ public class MetricsClient {
      */
     private String buildAvgLatencyQuery(String serviceName) {
         return String.format(
-                "sum(rate(http_request_duration_seconds_sum{job=\"%s\"}[5m])) / " +
-                "sum(rate(http_request_duration_seconds_count{job=\"%s\"}[5m]))",
-                serviceName, serviceName
+                "(sum(rate(http_request_duration_seconds_sum{job=~\"%1$s\"}[5m])) or " +
+                "sum(rate(http_server_requests_seconds_sum{job=~\"%1$s\"}[5m])) or vector(0)) / " +
+                "(sum(rate(http_request_duration_seconds_count{job=~\"%1$s\"}[5m])) or " +
+                "sum(rate(http_server_requests_seconds_count{job=~\"%1$s\"}[5m])) or vector(1))",
+                serviceName
         );
     }
 

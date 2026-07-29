@@ -46,14 +46,16 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
       }
 
       // Fetch Prometheus metrics from Agent Service
-      const [foodRush, payment] = await Promise.all([
-        agentApi.getMetrics('FoodRush-Orders').catch(() => null),
-        agentApi.getMetrics('Payment-Gateway').catch(() => null),
+      const [apiSvc, schedulerSvc, workerSvc] = await Promise.all([
+        agentApi.getMetrics('api-service').catch(() => null),
+        agentApi.getMetrics('scheduler-service').catch(() => null),
+        agentApi.getMetrics('worker-service').catch(() => null),
       ]);
 
       setServiceMetrics({
-        'FoodRush-Orders': foodRush,
-        'Payment-Gateway': payment,
+        'api-service': apiSvc,
+        'scheduler-service': schedulerSvc,
+        'worker-service': workerSvc,
       });
     } catch (err) {
       console.error('Failed to fetch backend metrics', err);
@@ -119,7 +121,7 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
                   Backend Microservices Offline or Unreachable
                 </strong>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
-                  Cannot connect to Query Service (:8082) or Command Service (:8081). Ensure Docker containers are running (<code>docker-compose up</code>).
+                  Cannot connect to Query Service (:18082) or Command Service (:18081). Ensure Docker containers are running (<code>docker compose up</code>).
                 </p>
               </div>
             </div>
@@ -170,8 +172,8 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
         </div>
 
         {/* Monitored Microservices Prometheus Status */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-          {['FoodRush-Orders', 'Payment-Gateway'].map((service) => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
+          {['api-service', 'scheduler-service', 'worker-service'].map((service) => {
             const m = serviceMetrics[service];
             const isOffline = m === null || m?.stale === true;
 
