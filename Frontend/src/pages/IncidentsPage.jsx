@@ -31,8 +31,11 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
 
   const activeFilter = searchParams.get('filter') || 'all';
 
-  const fetchIncidents = useCallback(async () => {
+  const fetchIncidents = useCallback(async (isBackground = false) => {
     try {
+      if (!isBackground) {
+        setLoading(true);
+      }
       let data;
       if (activeFilter === 'active') {
         data = await queryApi.getActiveIncidents();
@@ -43,7 +46,7 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
       } else {
         data = await queryApi.getAllIncidents();
       }
-      setIncidents(data);
+      setIncidents(data || []);
     } catch (err) {
       console.error('Failed to fetch incidents', err);
     } finally {
@@ -52,13 +55,16 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
   }, [activeFilter]);
 
   useEffect(() => {
-    setLoading(true);
     fetchIncidents();
+    const interval = setInterval(() => {
+      fetchIncidents(true);
+    }, 3000);
+    return () => clearInterval(interval);
   }, [fetchIncidents]);
 
   useEffect(() => {
     const unsub = wsSubscribe('/topic/incidents/active', () => {
-      fetchIncidents();
+      fetchIncidents(true);
     });
     return unsub;
   }, [wsSubscribe, fetchIncidents]);

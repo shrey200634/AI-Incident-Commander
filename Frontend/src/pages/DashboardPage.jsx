@@ -26,9 +26,11 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
   const [backendError, setBackendError] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isBackground = false) => {
     try {
-      setLoading(true);
+      if (!isBackground) {
+        setLoading(true);
+      }
       setBackendError(false);
 
       const [active, all, dlq] = await Promise.all([
@@ -45,18 +47,19 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
         setDlqCount(dlq?.length || 0);
       }
 
-      // Fetch Prometheus metrics from Agent Service
-      const [apiSvc, schedulerSvc, workerSvc] = await Promise.all([
-        agentApi.getMetrics('api-service').catch(() => null),
-        agentApi.getMetrics('scheduler-service').catch(() => null),
-        agentApi.getMetrics('worker-service').catch(() => null),
-      ]);
+      // Asynchronously fetch Prometheus metrics in background without blocking active incidents
+      agentApi.getMetrics('api-service').then((m) => {
+        if (m) setServiceMetrics((prev) => ({ ...prev, 'api-service': m }));
+      }).catch(() => null);
 
-      setServiceMetrics({
-        'api-service': apiSvc,
-        'scheduler-service': schedulerSvc,
-        'worker-service': workerSvc,
-      });
+      agentApi.getMetrics('scheduler-service').then((m) => {
+        if (m) setServiceMetrics((prev) => ({ ...prev, 'scheduler-service': m }));
+      }).catch(() => null);
+
+      agentApi.getMetrics('worker-service').then((m) => {
+        if (m) setServiceMetrics((prev) => ({ ...prev, 'worker-service': m }));
+      }).catch(() => null);
+
     } catch (err) {
       console.error('Failed to fetch backend metrics', err);
       setBackendError(true);
@@ -67,12 +70,16 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(() => {
+      fetchData(true);
+    }, 3000);
+    return () => clearInterval(interval);
   }, [fetchData]);
 
   // STOMP WebSocket real-time event listener
   useEffect(() => {
     const unsub = wsSubscribe('/topic/incidents/active', () => {
-      fetchData();
+      fetchData(true);
     });
     return unsub;
   }, [wsSubscribe, fetchData]);

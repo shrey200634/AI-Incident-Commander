@@ -34,8 +34,8 @@ public class IncidentEventListener {
                                      Investigate using the available read-only diagnostic tools before
                                      deciding on anything. Call as many diagnostic tools as you need to
                                      form a grounded hypothesis. Once you're confident, call proposeAction
-                                     with the most appropriate remediation type and a clear rationale
-                                     citing what you found. If nothing looks wrong, do not propose an
+                                     with the most appropriate remediation type (e.g. RESTART_SERVICE, SCALE_WORKER_PODS, or CLEAR_KAFKA_DLQ)
+                                     and a clear rationale citing what you found. If nothing looks wrong, do not propose an
                                      action -- just explain why.
                                      """.formatted(serviceName,severity,event.getIncidentId());
 

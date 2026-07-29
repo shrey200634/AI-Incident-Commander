@@ -97,22 +97,30 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
     }
   };
 
+  const handleApprove = (actionId) => {
+    executeActionCall(actionId, () =>
+      commandApi.approveAction(id, actionId, approvedByInput || 'OpsCommander')
+    );
+  };
+
+  const handleReject = (actionId) => {
+    executeActionCall(actionId, () =>
+      commandApi.rejectAction(id, actionId, rejectReasonInput || 'Rejected by commander')
+    );
+  };
+
   const confirmApprove = () => {
     if (!approvalModalAction) return;
     const actionId = approvalModalAction.id;
     setApprovalModalAction(null);
-    executeActionCall(actionId, () =>
-      commandApi.approveAction(id, actionId, approvedByInput || 'OpsEngineer')
-    );
+    handleApprove(actionId);
   };
 
   const confirmReject = () => {
     if (!rejectModalAction) return;
     const actionId = rejectModalAction.id;
     setRejectModalAction(null);
-    executeActionCall(actionId, () =>
-      commandApi.rejectAction(id, actionId, rejectReasonInput || 'Rejected')
-    );
+    handleReject(actionId);
   };
 
   const confirmPropose = async () => {
@@ -403,7 +411,7 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
                             <>
                               <button
                                 className="btn btn-success btn-sm"
-                                onClick={() => setApprovalModalAction(action)}
+                                onClick={() => handleApprove(action.id)}
                                 disabled={actionLoading[action.id]}
                               >
                                 {actionLoading[action.id] ? (
@@ -415,10 +423,15 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
                               </button>
                               <button
                                 className="btn btn-danger btn-sm"
-                                onClick={() => setRejectModalAction(action)}
+                                onClick={() => handleReject(action.id)}
                                 disabled={actionLoading[action.id]}
                               >
-                                <XCircle size={13} /> Reject
+                                {actionLoading[action.id] ? (
+                                  <Loader2 size={13} className="spinning" />
+                                ) : (
+                                  <XCircle size={13} />
+                                )}
+                                Reject
                               </button>
                             </>
                           )}

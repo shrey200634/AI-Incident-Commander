@@ -36,6 +36,13 @@ export const queryApi = {
     api.get(`/api/query/actions/${id}`).then(r => r.data),
 };
 
+const generateIdempotencyKey = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'key-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+};
+
 // ── Command Service (CQRS Write Side — Port 8081 / Gateway 8080) ──
 export const commandApi = {
   createIncident: (data) =>
@@ -48,7 +55,7 @@ export const commandApi = {
     api.post(
       `/api/incidents/${incidentId}/actions/${actionId}/approve`,
       { approvedBy: approvedBy || 'OpsEngineer' },
-      { headers: { 'X-Idempotency-Key': crypto.randomUUID() } }
+      { headers: { 'X-Idempotency-Key': generateIdempotencyKey() } }
     ).then(r => r.data),
 
   rejectAction: (incidentId, actionId, reason) =>
@@ -61,7 +68,7 @@ export const commandApi = {
     api.post(
       `/api/incidents/${incidentId}/actions/${actionId}/execute`,
       {},
-      { headers: { 'X-Idempotency-Key': crypto.randomUUID() } }
+      { headers: { 'X-Idempotency-Key': generateIdempotencyKey() } }
     ).then(r => r.data),
 
   rollbackAction: (incidentId, actionId) =>
