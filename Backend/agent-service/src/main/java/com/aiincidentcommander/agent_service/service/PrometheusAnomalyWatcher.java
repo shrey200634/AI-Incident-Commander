@@ -32,7 +32,7 @@ public class PrometheusAnomalyWatcher {
             MetricsClient metricsClient,
             CommandServiceClient commandServiceClient,
             @Value("${monitored.services:api-service,scheduler-service,worker-service}") String monitoredServicesRaw,
-            @Value("${anomaly.latency-threshold-ms:500.0}") double latencyThreshold,
+            @Value("${anomaly.latency-threshold-ms:50.0}") double latencyThreshold,
             @Value("${anomaly.error-threshold:5.0}") double errorThreshold) {
         this.metricsClient = metricsClient;
         this.commandServiceClient = commandServiceClient;

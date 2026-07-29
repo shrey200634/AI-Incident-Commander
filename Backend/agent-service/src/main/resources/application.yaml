@@ -65,7 +65,7 @@ monitored:
   services: ${MONITORED_SERVICES:api-service,scheduler-service,worker-service}
 
 anomaly:
-  latency-threshold-ms: ${ANOMALY_LATENCY_THRESHOLD_MS:500.0}
+  latency-threshold-ms: ${ANOMALY_LATENCY_THRESHOLD_MS:50.0}
   error-threshold: ${ANOMALY_ERROR_THRESHOLD:5.0}
 
 resilience4j:

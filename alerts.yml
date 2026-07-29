@@ -12,11 +12,11 @@ groups:
           description: "Error rate exceeded 5% over 5m sliding window"
 
       - alert: HighLatency
-        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 0.5
+        expr: rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) > 0.05
         for: 10s
         labels:
           severity: HIGH
           service: Payment-Gateway
         annotations:
           summary: "High latency detected on Payment-Gateway"
-          description: "Average latency exceeded 500ms"
+          description: "Average latency exceeded 50ms"

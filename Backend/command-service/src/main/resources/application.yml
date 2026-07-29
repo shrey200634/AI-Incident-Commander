@@ -41,7 +41,7 @@ management:
 
 logging:
   level:
-    com.aiincidentcommander: ERROR
+    com.aiincidentcommander: INFO
 
 docker:
   host: ${DOCKER_HOST}
