@@ -118,4 +118,9 @@ public class DockerExecutionService {
             return false;
         }
     }
+
+    @jakarta.annotation.PostConstruct
+    public void logPathMappings() {
+        log.info("🗺️ [SCALING CONFIG] Loaded path-mappings: {}", scalingProperties.getPathMappings());
+    }
 }

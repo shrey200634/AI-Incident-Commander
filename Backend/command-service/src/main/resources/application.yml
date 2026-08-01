@@ -50,4 +50,4 @@ docker:
 
 scaling:
   path-mappings:
-    "C:/DistributedJobForge": /djf-workspace
+    "[C:/DistributedJobForge]": /djf-workspace
