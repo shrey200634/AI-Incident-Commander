@@ -47,3 +47,7 @@ docker:
   host: ${DOCKER_HOST}
   compose:
     project-dir: ${DOCKER_COMPOSE_DIR}
+
+scaling:
+  path-mappings:
+    "[C:/DistributedJobForge]": /djf-workspace

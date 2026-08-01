@@ -91,6 +91,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - .:/workspace
+      - ${DJF_PROJECT_DIR}:/djf-workspace:ro
 
   notification-service:
     build:
