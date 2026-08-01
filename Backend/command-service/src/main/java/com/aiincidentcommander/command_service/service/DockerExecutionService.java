@@ -1,11 +1,14 @@
 package com.aiincidentcommander.command_service.service;
 
+import com.aiincidentcommander.command_service.config.ScalingProperties;
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -13,17 +16,17 @@ import org.springframework.stereotype.Component;
 public class DockerExecutionService {
 
     private final DockerClient dockerClient;
+    private final ScalingProperties scalingProperties;
 
     @Value("${docker.compose.project-dir}")
     private String composeProjectDir;
-
 
     public boolean restartService(String containerName) {
         try {
             log.info("🐳 [DOCKER EXECUTION ENGINE] Attempting restart for serviceName='{}'...", containerName);
             String targetId = findContainerId(containerName);
             if (targetId != null) {
-                log.info("🚀 [DOCKER EXECUTION ENGINE] Executing dockerClient.restartContainerCmd('{}') [Target ID/Name: {}]", serviceNameOrTarget(containerName, targetId), targetId);
+                log.info("🚀 [DOCKER EXECUTION ENGINE] Executing dockerClient.restartContainerCmd('{}')", targetId);
                 dockerClient.restartContainerCmd(targetId).exec();
                 log.info("✅ [DOCKER EXECUTION ENGINE] Successfully restarted Docker container '{}' for service: {}", targetId, containerName);
                 return true;
@@ -34,10 +37,6 @@ public class DockerExecutionService {
             log.error("❌ [DOCKER EXECUTION ENGINE] Exception restarting container for service {}: {}", containerName, e.getMessage());
             return false;
         }
-    }
-
-    private String serviceNameOrTarget(String serviceName, String targetId) {
-        return targetId != null ? targetId : serviceName;
     }
 
     private String findContainerId(String serviceName) {
@@ -63,55 +62,56 @@ public class DockerExecutionService {
         return null;
     }
 
+    private String resolveContainerPath(String hostWorkingDir) {
+        String normalized = hostWorkingDir.replace("\\", "/");
+        for (Map.Entry<String, String> entry : scalingProperties.getPathMappings().entrySet()) {
+            if (normalized.equalsIgnoreCase(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        log.warn("⚠️ No path mapping found for host working_dir '{}', using as-is", hostWorkingDir);
+        return hostWorkingDir;
+    }
 
     public boolean scaleWorkerPods(String serviceName, int replicas) {
         try {
-            log.info("🚀 [DOCKER ENGINE] Executing scale for service='{}' to {} replicas...", serviceName, replicas);
-            
-            java.util.List<String> candidates = java.util.List.of(
-                serviceName,
-                serviceName.replace("-service", ""),
-                "distributedjobforge-" + serviceName,
-                "djf-" + serviceName,
-                "aic-" + serviceName
-            );
+            log.info("🚀 [DOCKER ENGINE] Scaling '{}' to {} replicas...", serviceName, replicas);
 
-            // 1. Try Docker Compose CLI first
-            for (String candidate : candidates) {
-                ProcessBuilder pb = new ProcessBuilder(
-                        "docker", "compose", "up", "-d", "--scale", candidate + "=" + replicas, "--no-recreate"
-                );
-                pb.directory(new java.io.File(composeProjectDir));
-                pb.redirectErrorStream(true);
-                Process process = pb.start();
-                String output = new String(process.getInputStream().readAllBytes());
-                int exitCode = process.waitFor();
-                if (exitCode == 0 && !output.contains("no such service")) {
-                    log.info("✅ [DOCKER COMPOSE ENGINE] Successfully scaled compose service '{}' to {} replicas!\n{}", candidate, replicas, output);
-                    return true;
-                }
+            String existingContainerId = findContainerId(serviceName);
+            if (existingContainerId == null) {
+                log.warn("⚠️ [DOCKER ENGINE] No running container found for '{}' — nothing to scale.", serviceName);
+                return false;
             }
 
-            // 2. Fallback: Scale via Direct Docker Engine API
-            log.info("ℹ️ [DOCKER API ENGINE] Compose file mismatch. Attempting direct container replication via Docker API for service '{}'...", serviceName);
-            String existingContainerId = findContainerId(serviceName);
-            if (existingContainerId != null) {
-                var inspect = dockerClient.inspectContainerCmd(existingContainerId).exec();
-                String imageName = inspect.getConfig().getImage();
-                String replicaName = serviceName + "-replica-" + (System.currentTimeMillis() % 1000);
-                
-                log.info("🚀 [DOCKER API ENGINE] Creating scaled replica container '{}' using image '{}'", replicaName, imageName);
-                var createCmd = dockerClient.createContainerCmd(imageName).withName(replicaName);
-                if (inspect.getConfig().getEnv() != null) {
-                    createCmd.withEnv(inspect.getConfig().getEnv());
-                }
-                var container = createCmd.exec();
-                dockerClient.startContainerCmd(container.getId()).exec();
-                log.info("✅ [DOCKER API ENGINE] Successfully created and started scaled replica container '{}' (ID: {})", replicaName, container.getId());
+            var inspect = dockerClient.inspectContainerCmd(existingContainerId).exec();
+            Map<String, String> labels = inspect.getConfig().getLabels();
+            String composeProject = labels != null ? labels.get("com.docker.compose.project") : null;
+            String composeService = labels != null ? labels.get("com.docker.compose.service") : null;
+            String composeWorkingDir = labels != null ? labels.get("com.docker.compose.project.working_dir") : null;
+
+            if (composeProject == null || composeService == null || composeWorkingDir == null) {
+                log.warn("⚠️ [DOCKER ENGINE] Container for '{}' isn't Compose-managed (missing labels) — cannot scale.", serviceName);
+                return false;
+            }
+
+            String containerPath = resolveContainerPath(composeWorkingDir);
+
+            ProcessBuilder pb = new ProcessBuilder(
+                    "docker", "compose", "-p", composeProject,
+                    "up", "-d", "--scale", composeService + "=" + replicas, "--no-recreate"
+            );
+            pb.directory(new File(containerPath));
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            String output = new String(process.getInputStream().readAllBytes());
+            int exitCode = process.waitFor();
+
+            if (exitCode == 0) {
+                log.info("✅ [DOCKER COMPOSE ENGINE] Scaled '{}' (project '{}') to {} replicas.\n{}",
+                        composeService, composeProject, replicas, output);
                 return true;
             }
-
-            log.warn("⚠️ [DOCKER ENGINE] Could not find compose service or active container matching '{}' to scale.", serviceName);
+            log.error("❌ [DOCKER COMPOSE ENGINE] Scale failed for '{}' (exit {}): {}", composeService, exitCode, output);
             return false;
         } catch (Exception e) {
             log.error("❌ [DOCKER ENGINE] Exception scaling {}: {}", serviceName, e.getMessage());
