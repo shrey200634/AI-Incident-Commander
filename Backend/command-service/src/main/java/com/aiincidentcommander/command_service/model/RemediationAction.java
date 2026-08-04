@@ -42,6 +42,9 @@ public class RemediationAction {
     // nullable — set only when this row is a compensating rollback of another action
     private Long rollbackOf;
 
+    @Column(length = 500)
+    private String previousState ;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
