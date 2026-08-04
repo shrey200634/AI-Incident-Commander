@@ -123,4 +123,28 @@ public class DockerExecutionService {
     public void logPathMappings() {
         log.info("🗺️ [SCALING CONFIG] Loaded path-mappings: {}", scalingProperties.getPathMappings());
     }
+
+
+    public  int getCurrentReplicationCount (String serviceName ){
+        if (serviceName==null || serviceName.isBlank()) return -1 ;
+        String cleanName = serviceName.toLowerCase().trim();
+        try{
+            var container = dockerClient.listContainersCmd().withShowAll(false).exec();
+            int count =0 ;
+            for(var c : container){
+                if (c.getNames() ==null) continue;
+                for(String rawName : c.getNames()){
+                    if (rawName.toLowerCase().contains(cleanName)){
+                        count++;
+                        break;
+                    }
+                }
+            }
+            log.info("📊 [DOCKER ENGINE] Current running replica count for '{}': {}", serviceName, count);
+            return count;
+        } catch (Exception e) {
+            log.warn("❌ [DOCKER ENGINE] Could not determine replica count for '{}': {}", serviceName, e.getMessage());
+            return -1;
+        }
+    }
 }

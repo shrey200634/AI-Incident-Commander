@@ -167,7 +167,7 @@ public class IncidentService {
             throw new InvalidStateTransitionException(action.getStatus().name(), ActionStatus.EXECUTED.name());
         }
 
-        boolean executionSucceeded = performRealAction(action.getActionType(), incident.getServiceName());
+        boolean executionSucceeded = performRealAction(action, incident.getServiceName());
         if (!executionSucceeded) {
             log.error("Real execution failed for incidentId={}, actionId={}, type={}",
                     id, actionId, action.getActionType());
@@ -183,7 +183,12 @@ public class IncidentService {
         publishEvent(KafkaTopicConfig.TOPIC_ACTION_EXECUTED , id , toResponseRemediation(action , incident.getServiceName()));
         return toResponseRemediation(action,incident.getServiceName());
     }
-    private boolean performRealAction(String actionType, String serviceName) {
+
+
+
+
+    private boolean performRealAction(RemediationAction action, String serviceName) {
+        String actionType = action.getActionType();
         if (actionType == null) return false;
         String normalized = actionType.toUpperCase().trim();
 
@@ -197,6 +202,13 @@ public class IncidentService {
             }
             return success;
         } else if (normalized.contains("SCALE") || normalized.contains("POD") || normalized.contains("WORKER")) {
+            int previousReplicas = dockerExecutionService.getCurrentReplicationCount(serviceName);
+            if (previousReplicas >= 0) {
+                action.setPreviousState("replicas=" + previousReplicas);
+            } else {
+                log.warn("⚠️ Could not snapshot pre-scale replica count for '{}'; rollback will fall back to a default.", serviceName);
+            }
+
             boolean success = dockerExecutionService.scaleWorkerPods(serviceName, 3);
             if (!success) {
                 log.warn("⚠️ Docker compose scale for '{}' failed or project dir mismatch. Action recorded successfully.", serviceName);
@@ -220,6 +232,7 @@ public class IncidentService {
 
 
     //roll-back
+    //roll-back
     @Transactional
     public  RemediationActionResponse rollBackAction(Long id , Long actionId ){
         Incident incident = findIncidentOrThrow( id );
@@ -233,13 +246,22 @@ public class IncidentService {
         if (action.getStatus() != ActionStatus.EXECUTED){
             throw new InvalidStateTransitionException(action.getStatus().name() , ActionStatus.ROLLED_BACK.name());
         }
+
+        boolean rollbackSucceeded = performRollbackAction(action, incident.getServiceName());
+        if (!rollbackSucceeded) {
+            log.error("Real rollback failed for incidentId={}, actionId={}, type={}",
+                    id, actionId, action.getActionType());
+            throw new RuntimeException("Rollback failed: could not reverse " + action.getActionType());
+        }
+
         action.setStatus(ActionStatus.ROLLED_BACK);
         actionRepository.save(action );
 
         RemediationAction rollbackAction = RemediationAction.builder()
                 .incidentId(id)
                 .actionType("ROLLBACK_" + action.getActionType())
-                .rationale("Rollback of action " + actionId)
+                .rationale("Rollback of action " + actionId
+                        + (action.getPreviousState() != null ? " (restored " + action.getPreviousState() + ")" : ""))
                 .status(ActionStatus.EXECUTED)
                 .executedAt(LocalDateTime.now())
                 .rollbackOf(actionId)
@@ -256,6 +278,58 @@ public class IncidentService {
 
     }
 
+    /**
+     * Reverses the real side-effect of an executed action, based on its actionType
+     * and the previousState snapshot captured at execution time.
+     */
+    private boolean performRollbackAction(RemediationAction action, String serviceName) {
+        String actionType = action.getActionType();
+        if (actionType == null) return true;
+        String normalized = actionType.toUpperCase().trim();
+
+        log.info("⏪ [ROLLBACK ENGINE] Reversing ActionType='{}' on Service='{}', previousState='{}'",
+                actionType, serviceName, action.getPreviousState());
+
+        if (normalized.contains("SCALE") || normalized.contains("POD") || normalized.contains("WORKER")) {
+            int originalReplicas = parseReplicaCount(action.getPreviousState());
+            if (originalReplicas < 0) {
+                log.warn("⚠️ No previous replica count recorded for action {} — defaulting rollback target to 1 replica.",
+                        action.getId());
+                originalReplicas = 1;
+            }
+            boolean success = dockerExecutionService.scaleWorkerPods(serviceName, originalReplicas);
+            if (!success) {
+                log.warn("⚠️ Rollback scale for '{}' back to {} replicas failed or project mismatch. Rollback recorded anyway.",
+                        serviceName, originalReplicas);
+                return true;
+            }
+            return success;
+        } else if (normalized.contains("RESTART")) {
+            log.info("ℹ️ RESTART has no meaningful inverse action — nothing to reverse on Docker side.");
+            return true;
+        } else if (normalized.contains("DLQ") || normalized.contains("LETTER") || normalized.contains("CLEAR") || normalized.contains("PURGE")) {
+            log.warn("⚠️ Deleted DLQ records cannot be restored — rollback recorded for audit only, no data recovery possible.");
+            return true;
+        } else {
+            log.info("ℹ️ No real rollback procedure defined for actionType={}", actionType);
+            return true;
+        }
+    }
+
+
+
+    private int parseReplicaCount(String previousState) {
+        if (previousState == null) return -1;
+        try {
+            String[] parts = previousState.split("=");
+            if (parts.length == 2) {
+                return Integer.parseInt(parts[1].trim());
+            }
+        } catch (NumberFormatException e) {
+            log.warn("⚠️ Could not parse previousState '{}': {}", previousState, e.getMessage());
+        }
+        return -1;
+    }
     //update transition status (escalate/ resolved)
     @Transactional
     public  IncidentResponse updateIncidentStatus ( Long id , UpdateStatusRequest request ) {
