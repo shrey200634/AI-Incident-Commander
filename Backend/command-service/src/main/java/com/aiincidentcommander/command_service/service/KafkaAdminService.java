@@ -104,4 +104,65 @@ public class KafkaAdminService {
             return false ;
         }
     }
+
+
+    private List<ConsumerRecord<byte[],byte[]>> consumeAllRecords(String topicName ){
+        List<ConsumerRecord<byte[],byte[]>> collected = new ArrayList<>();
+
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "dlq-rollback-scanner-" + UUID.randomUUID());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        try (KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<>(props)) {
+            var partitionInfos = consumer.partitionsFor(topicName);
+            if (partitionInfos == null || partitionInfos.isEmpty()) {
+                return collected;
+            }
+            List<TopicPartition> partitions = partitionInfos.stream()
+                    .map(p -> new TopicPartition(topicName, p.partition()))
+                    .collect(Collectors.toList());
+
+            consumer.assign(partitions);
+            consumer.seekToBeginning(partitions);
+            Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
+
+            long remaining = endOffsets.values().stream().mapToLong(Long::longValue).sum()
+                    - partitions.stream().mapToLong(consumer::position).sum();
+
+            int emptyPolls = 0;
+            while (remaining > 0 && emptyPolls < 5) {
+                ConsumerRecords<byte[], byte[]> batch = consumer.poll(Duration.ofSeconds(2));
+                if (batch.isEmpty()) {
+                    emptyPolls++;
+                    continue;
+                }
+                batch.forEach(collected::add);
+                remaining = endOffsets.entrySet().stream()
+                        .mapToLong(e -> e.getValue() - consumer.position(e.getKey()))
+                        .filter(n -> n > 0)
+                        .sum();
+            }
+        }
+        return collected;
+    }
+
+
+    private void publishRecord(String topicName, List<ConsumerRecord<byte[], byte[]>> records) {
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+
+        try (KafkaProducer<byte[], byte[]> producer = new KafkaProducer<>(props)) {
+            for (ConsumerRecord<byte[], byte[]> record : records) {
+                producer.send(new ProducerRecord<>(topicName, record.key(), record.value()));
+            }
+            producer.flush();
+        }
+    }
+
 }
