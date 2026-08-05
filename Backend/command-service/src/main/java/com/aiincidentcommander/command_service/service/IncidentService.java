@@ -216,13 +216,15 @@ public class IncidentService {
             }
             return success;
         } else if (normalized.contains("DLQ") || normalized.contains("LETTER") || normalized.contains("CLEAR") || normalized.contains("PURGE")) {
-            boolean success = kafkaAdminService.clearDeadLetterQueue(serviceName + ".dlq");
-            if (!success) {
+            String backupTopic = kafkaAdminService.backupAndClearDeadLetterQueue(serviceName + ".dlq", action.getId().toString());
+            if (backupTopic == null) {
                 log.warn("⚠️ Kafka clear DLQ for '{}.dlq' failed (topic may not exist yet). Action recorded successfully.", serviceName);
                 return true;
             }
-            return success;
-        } else {
+            action.setPreviousState("dlq_backup_topic=" + backupTopic);
+            return true;
+        }
+        else {
             log.info("ℹ️ Executing standard remediation procedure for actionType={}", actionType);
             return true;
         }
@@ -308,9 +310,19 @@ public class IncidentService {
             log.info("ℹ️ RESTART has no meaningful inverse action — nothing to reverse on Docker side.");
             return true;
         } else if (normalized.contains("DLQ") || normalized.contains("LETTER") || normalized.contains("CLEAR") || normalized.contains("PURGE")) {
-            log.warn("⚠️ Deleted DLQ records cannot be restored — rollback recorded for audit only, no data recovery possible.");
+            String backupTopic = parseBackupTopic(action.getPreviousState());
+            if (backupTopic == null) {
+                log.warn("⚠️ No DLQ backup recorded for action {} — nothing to restore.", action.getId());
+                return true;
+            }
+            boolean restored = kafkaAdminService.restoreDeadLetterQueueFromBackup(backupTopic, serviceName + ".dlq");
+            if (!restored) {
+                log.error("❌ Failed to restore DLQ '{}.dlq' from backup '{}'.", serviceName, backupTopic);
+                return false;
+            }
             return true;
-        } else {
+        }
+        else {
             log.info("ℹ️ No real rollback procedure defined for actionType={}", actionType);
             return true;
         }
@@ -436,4 +448,9 @@ public class IncidentService {
         incidentRep.save(incident);
     }
 
+
+    private String parseBackupTopic(String previousState) {
+        if (previousState == null || !previousState.startsWith("dlq_backup_topic=")) return null;
+        return previousState.substring("dlq_backup_topic=".length()).trim();
+    }
 }
