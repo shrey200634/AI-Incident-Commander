@@ -83,4 +83,25 @@ public class KafkaAdminService {
             return null;
         }
     }
+
+
+
+    public  boolean restoreDeadLetterQueueFromBackup(String backupTopicName  , String originalTopic){
+        try{
+            List<ConsumerRecord<byte[], byte[]>> records = consumeAllRecords(backupTopicName);
+            if (records.isEmpty()){
+                log.warn("⚠️ [DLQ RESTORE] No backed-up messages found in '{}' — nothing to restore into '{}'.",
+                        backupTopicName, originalTopic);
+                return true;
+            }
+            publishRecord(originalTopic, records);
+            log.info("♻️ [DLQ RESTORE] Replayed {} message(s) from '{}' back into '{}'.",
+                    records.size(), backupTopicName, originalTopic);
+            return true ;
+        }catch (Exception e){
+            log.error("❌ [DLQ RESTORE] Failed to restore '{}' from backup '{}': {}",
+                    originalTopic, backupTopicName, e.getMessage());
+            return false ;
+        }
+    }
 }
