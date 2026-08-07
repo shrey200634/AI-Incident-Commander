@@ -158,6 +158,8 @@ public class KafkaAdminService {
 
 
     private void publishRecord(String topicName, List<ConsumerRecord<byte[], byte[]>> records) {
+        ensureTopicExists(topicName);
+
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
@@ -168,6 +170,20 @@ public class KafkaAdminService {
                 producer.send(new ProducerRecord<>(topicName, record.key(), record.value()));
             }
             producer.flush();
+        }
+    }
+
+    private void ensureTopicExists(String topicName) {
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        try (AdminClient admin = AdminClient.create(props)) {
+            boolean exists = admin.listTopics().names().get().contains(topicName);
+            if (!exists) {
+                admin.createTopics(List.of(new NewTopic(topicName, 1, (short) 1))).all().get();
+                log.info("🆕 Created backup topic '{}' (did not exist, auto-create disabled).", topicName);
+            }
+        } catch (Exception e) {
+            log.error("Failed to ensure topic '{}' exists: {}", topicName, e.getMessage());
         }
     }
 
