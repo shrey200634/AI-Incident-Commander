@@ -38,6 +38,12 @@ public class KafkaAdminService {
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         try (AdminClient admin = AdminClient.create(props)) {
+            boolean exists = admin.listTopics().names().get().contains(topicName);
+            if (!exists) {
+                log.info("DLQ topic '{}' does not exist yet — nothing to clear.", topicName);
+                return true;
+            }
+
             var description = admin.describeTopics(List.of(topicName))
                     .allTopicNames().get().get(topicName);
             List<TopicPartition> partitions = description.partitions().stream()
@@ -64,7 +70,7 @@ public class KafkaAdminService {
         String backupTopic = topicName + ".rollack." + actionId;
         try{
             List<ConsumerRecord<byte[] , byte[]>> records = consumeAllRecords(topicName);
-            if (records.isEmpty()){
+            if (!records.isEmpty()){
                 publishRecord(backupTopic , records);
                 log.info("📦 [DLQ BACKUP] Copied {} message(s) from '{}' into backup topic '{}' before clearing.",
                         records.size(), topicName, backupTopic);
