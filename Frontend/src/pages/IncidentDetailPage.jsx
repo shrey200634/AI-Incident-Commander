@@ -56,10 +56,29 @@ export default function IncidentDetailPage({ wsSubscribe, refreshActiveCount }) 
     try {
       setLoading(true);
       setError('');
-      const detail = await queryApi.getIncidentDetail(id);
-      if (detail && detail.incident) {
-        setIncident(detail.incident);
-        setActions(detail.actions || []);
+      let detail = null;
+
+      try {
+        detail = await queryApi.getIncidentDetail(id);
+      } catch (err) {
+        console.warn(`getIncidentDetail(${id}) failed, trying fallback getIncidentById...`, err);
+        const inc = await queryApi.getIncidentById(id).catch(() => null);
+        if (inc) {
+          const acts = await queryApi.getActionsByIncident(id).catch(() => []);
+          detail = { incident: inc, actions: acts };
+        }
+      }
+
+      if (detail) {
+        const incData = detail.incident || (detail.id ? detail : null);
+        const actsData = Array.isArray(detail.actions) ? detail.actions : [];
+
+        if (incData) {
+          setIncident(incData);
+          setActions(actsData);
+        } else {
+          setError(`Incident #${id} not found in database.`);
+        }
       } else {
         setError(`Incident #${id} not found in database.`);
       }

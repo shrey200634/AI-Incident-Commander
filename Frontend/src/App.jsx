@@ -6,6 +6,7 @@ import IncidentsPage from './pages/IncidentsPage';
 import IncidentDetailPage from './pages/IncidentDetailPage';
 import DlqAdminPage from './pages/DlqAdminPage';
 import TelemetryPage from './pages/TelemetryPage';
+import DiagnosticsPage from './pages/DiagnosticsPage';
 import { useWebSocket } from './hooks/useWebSocket';
 import { queryApi, adminDlqApi } from './api/client';
 
@@ -85,6 +86,10 @@ export default function App() {
           <Route
             path="/telemetry"
             element={<TelemetryPage />}
+          />
+          <Route
+            path="/diagnostics"
+            element={<DiagnosticsPage />}
           />
         </Routes>
       </main>

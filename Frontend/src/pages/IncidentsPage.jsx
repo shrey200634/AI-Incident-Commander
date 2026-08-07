@@ -33,7 +33,7 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
 
   const fetchIncidents = useCallback(async (isBackground = false) => {
     try {
-      if (!isBackground) {
+      if (!isBackground && incidents.length === 0) {
         setLoading(true);
       }
       let data;
@@ -52,7 +52,7 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
     } finally {
       setLoading(false);
     }
-  }, [activeFilter]);
+  }, [activeFilter, incidents.length]);
 
   useEffect(() => {
     fetchIncidents();
@@ -195,31 +195,34 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((inc) => (
-                  <tr key={inc.id} onClick={() => navigate(`/incidents/${inc.id}`)}>
-                    <td>
-                      <span className="incident-id">#{inc.id}</span>
-                    </td>
-                    <td>
-                      <span className="service-name">{inc.serviceName}</span>
-                    </td>
-                    <td>
-                      <SeverityBadge severity={inc.severity} />
-                    </td>
-                    <td>
-                      <StatusBadge status={inc.status} />
-                    </td>
-                    <td>
-                      <span className="time-ago">{formatTime(inc.createdAt)}</span>
-                    </td>
-                    <td>
-                      <span className="time-ago">{timeAgo(inc.lastUpdated || inc.createdAt)}</span>
-                    </td>
-                    <td>
-                      <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((inc) => {
+                  const incId = inc.id || inc.incidentId;
+                  return (
+                    <tr key={incId || Math.random()} onClick={() => incId && navigate(`/incidents/${incId}`)} style={{ cursor: 'pointer' }}>
+                      <td>
+                        <span className="incident-id">#{incId}</span>
+                      </td>
+                      <td>
+                        <span className="service-name">{inc.serviceName}</span>
+                      </td>
+                      <td>
+                        <SeverityBadge severity={inc.severity} />
+                      </td>
+                      <td>
+                        <StatusBadge status={inc.status} />
+                      </td>
+                      <td>
+                        <span className="time-ago">{formatTime(inc.createdAt)}</span>
+                      </td>
+                      <td>
+                        <span className="time-ago">{timeAgo(inc.lastUpdated || inc.createdAt)}</span>
+                      </td>
+                      <td>
+                        <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -230,7 +233,7 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
         <CreateIncidentModal
           onClose={() => setShowCreate(false)}
           onCreated={() => {
-            fetchIncidents();
+            fetchIncidents(true);
             refreshActiveCount();
           }}
         />
