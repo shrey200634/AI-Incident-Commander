@@ -36,7 +36,7 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
       const [active, all, dlq] = await Promise.all([
         queryApi.getActiveIncidents().catch(() => null),
         queryApi.getAllIncidents().catch(() => null),
-        adminDlqApi.getUnreplayed().catch(() => null),
+        adminDlqApi.getUnreplayed().catch(() => adminDlqApi.getAll().catch(() => null)),
       ]);
 
       if (active === null && all === null) {
@@ -49,7 +49,8 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
 
         setIncidents(activeList);
         setAllIncidents(allList);
-        setDlqCount(dlq?.length || 0);
+        const dlqList = Array.isArray(dlq) ? dlq : (dlq?.content || dlq?.data || []);
+        setDlqCount(dlqList.length);
       }
 
       // Asynchronously fetch Prometheus metrics in background without blocking active incidents
@@ -91,9 +92,10 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
 
   const activeCount = incidents.length;
   const resolvedCount = allIncidents.filter((i) => i.status === 'RESOLVED').length;
-  const awaitingApproval = incidents.filter(
-    (i) => i.status === 'WAITING_APPROVAL' || i.status === 'ACTION_PROPOSED'
-  ).length;
+  const awaitingApproval = incidents.filter((i) => {
+    const s = (i.status || '').toUpperCase();
+    return s === 'WAITING_APPROVAL' || s === 'ACTION_PROPOSED' || s === 'PROPOSED' || s === 'INVESTIGATING' || s === 'NEW';
+  }).length;
 
   return (
     <>

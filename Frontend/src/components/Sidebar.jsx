@@ -6,8 +6,7 @@ import {
   CheckCircle2,
   Cpu,
   Zap,
-  Database,
-  Wrench
+  Database
 } from 'lucide-react';
 
 export default function Sidebar({ connected, activeCount, dlqCount }) {
@@ -82,13 +81,6 @@ export default function Sidebar({ connected, activeCount, dlqCount }) {
         >
           <Cpu size={18} />
           Telemetry & Circuit Breaker
-        </NavLink>
-        <NavLink
-          to="/diagnostics"
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <Wrench size={18} />
-          AI Diagnostics
         </NavLink>
       </nav>
 

@@ -174,5 +174,17 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xms128m -Xmx384m"
 
+  frontend:
+    build:
+      context: ./Frontend
+    container_name: aic-frontend
+    restart: unless-stopped
+    depends_on:
+      - api-gateway
+      - query-service
+      - command-service
+    ports:
+      - "5174:80"
+
 volumes:
   mysql_data:
