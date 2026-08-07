@@ -6,8 +6,39 @@ const WS_URL = '/ws';
 
 export function useWebSocket() {
   const clientRef = useRef(null);
-  const subscriptionsRef = useRef(new Map());
+  // Map of destination string -> Map of callbackId -> callback function
+  const listenersRef = useRef(new Map());
+  // Map of destination string -> STOMP Subscription object
+  const stompSubscriptionsRef = useRef(new Map());
   const [connected, setConnected] = useState(false);
+
+  const setupStompSub = (destination) => {
+    const client = clientRef.current;
+    if (!client || !client.connected || stompSubscriptionsRef.current.has(destination)) {
+      return;
+    }
+
+    const sub = client.subscribe(destination, (message) => {
+      let parsedPayload;
+      try {
+        parsedPayload = JSON.parse(message.body);
+      } catch {
+        parsedPayload = message.body;
+      }
+      const callbacks = listenersRef.current.get(destination);
+      if (callbacks) {
+        callbacks.forEach((cb) => {
+          try {
+            cb(parsedPayload);
+          } catch (e) {
+            console.error('[WS] Error executing subscription callback', e);
+          }
+        });
+      }
+    });
+
+    stompSubscriptionsRef.current.set(destination, sub);
+  };
 
   useEffect(() => {
     const client = new Client({
@@ -18,19 +49,16 @@ export function useWebSocket() {
       onConnect: () => {
         setConnected(true);
         console.log('[WS] Connected');
-        // Resubscribe after reconnect
-        subscriptionsRef.current.forEach((callback, dest) => {
-          client.subscribe(dest, (message) => {
-            try {
-              callback(JSON.parse(message.body));
-            } catch {
-              callback(message.body);
-            }
-          });
+        // Resubscribe all active destinations on reconnect
+        listenersRef.current.forEach((callbacks, dest) => {
+          if (callbacks.size > 0) {
+            setupStompSub(dest);
+          }
         });
       },
       onDisconnect: () => {
         setConnected(false);
+        stompSubscriptionsRef.current.clear();
         console.log('[WS] Disconnected');
       },
       onStompError: (frame) => {
@@ -43,30 +71,48 @@ export function useWebSocket() {
     clientRef.current = client;
 
     return () => {
+      stompSubscriptionsRef.current.forEach((sub) => {
+        try {
+          sub.unsubscribe();
+        } catch {
+          // ignore cleanup errors
+        }
+      });
+      stompSubscriptionsRef.current.clear();
       client.deactivate();
     };
   }, []);
 
   const subscribe = useCallback((destination, callback) => {
-    subscriptionsRef.current.set(destination, callback);
+    const id = Math.random().toString(36).substring(2, 9);
+    
+    if (!listenersRef.current.has(destination)) {
+      listenersRef.current.set(destination, new Map());
+    }
+    const callbacksMap = listenersRef.current.get(destination);
+    callbacksMap.set(id, callback);
 
-    const client = clientRef.current;
-    if (client && client.connected) {
-      const sub = client.subscribe(destination, (message) => {
-        try {
-          callback(JSON.parse(message.body));
-        } catch {
-          callback(message.body);
-        }
-      });
-      return () => {
-        sub.unsubscribe();
-        subscriptionsRef.current.delete(destination);
-      };
+    if (clientRef.current && clientRef.current.connected) {
+      setupStompSub(destination);
     }
 
     return () => {
-      subscriptionsRef.current.delete(destination);
+      const currentCallbacks = listenersRef.current.get(destination);
+      if (currentCallbacks) {
+        currentCallbacks.delete(id);
+        if (currentCallbacks.size === 0) {
+          listenersRef.current.delete(destination);
+          const stompSub = stompSubscriptionsRef.current.get(destination);
+          if (stompSub) {
+            try {
+              stompSub.unsubscribe();
+            } catch {
+              // ignore
+            }
+            stompSubscriptionsRef.current.delete(destination);
+          }
+        }
+      }
     };
   }, []);
 

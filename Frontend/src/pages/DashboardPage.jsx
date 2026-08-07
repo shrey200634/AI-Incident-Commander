@@ -28,7 +28,7 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
 
   const fetchData = useCallback(async (isBackground = false) => {
     try {
-      if (!isBackground) {
+      if (!isBackground && incidents.length === 0) {
         setLoading(true);
       }
       setBackendError(false);
@@ -42,8 +42,13 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
       if (active === null && all === null) {
         setBackendError(true);
       } else {
-        setIncidents(active || []);
-        setAllIncidents(all || []);
+        const allList = all || [];
+        const activeList = active !== null && Array.isArray(active)
+          ? active
+          : allList.filter((i) => i.status !== 'RESOLVED' && i.status !== 'ESCALATED');
+
+        setIncidents(activeList);
+        setAllIncidents(allList);
         setDlqCount(dlq?.length || 0);
       }
 
@@ -66,7 +71,7 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [incidents.length]);
 
   useEffect(() => {
     fetchData();
@@ -263,37 +268,40 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
                 </tr>
               </thead>
               <tbody>
-                {incidents.map((inc) => (
-                  <tr key={inc.id} onClick={() => navigate(`/incidents/${inc.id}`)}>
-                    <td>
-                      <span className="incident-id">#{inc.id}</span>
-                    </td>
-                    <td>
-                      <span className="service-name">{inc.serviceName}</span>
-                    </td>
-                    <td>
-                      <SeverityBadge severity={inc.severity} />
-                    </td>
-                    <td>
-                      <StatusBadge status={inc.status} />
-                    </td>
-                    <td>
-                      <span className="time-ago">{timeAgo(inc.createdAt)}</span>
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        style={{ fontSize: '11px', padding: '4px 10px' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/incidents/${inc.id}`);
-                        }}
-                      >
-                        Enter War Room <ArrowRight size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {incidents.map((inc) => {
+                  const incId = inc.id || inc.incidentId;
+                  return (
+                    <tr key={incId || Math.random()} onClick={() => incId && navigate(`/incidents/${incId}`)} style={{ cursor: 'pointer' }}>
+                      <td>
+                        <span className="incident-id">#{incId}</span>
+                      </td>
+                      <td>
+                        <span className="service-name">{inc.serviceName}</span>
+                      </td>
+                      <td>
+                        <SeverityBadge severity={inc.severity} />
+                      </td>
+                      <td>
+                        <StatusBadge status={inc.status} />
+                      </td>
+                      <td>
+                        <span className="time-ago">{timeAgo(inc.createdAt)}</span>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          style={{ fontSize: '11px', padding: '4px 10px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (incId) navigate(`/incidents/${incId}`);
+                          }}
+                        >
+                          Enter War Room <ArrowRight size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -304,7 +312,7 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
         <CreateIncidentModal
           onClose={() => setShowCreateModal(false)}
           onCreated={() => {
-            fetchData();
+            fetchData(true);
             refreshActiveCount();
           }}
         />
