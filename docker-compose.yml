@@ -143,19 +143,18 @@ services:
       MONITORED_SERVICES: ${MONITORED_SERVICES}
       ANOMALY_LATENCY_THRESHOLD_MS: ${ANOMALY_LATENCY_THRESHOLD_MS}
 
-# Internal Prometheus container disabled — AI Incident Commander connects to Digg Project's Prometheus on port 9090
-#  prometheus:
-#    image: prom/prometheus:v2.51.0
-#    container_name: aic-prometheus
-#    restart: unless-stopped
-#    ports:
-#      - "9090:9090"
-#    volumes:
-#      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-#      - ./alerts.yml:/etc/prometheus/alerts.yml
-#    extra_hosts:
-#      - "host.docker.internal:host-gateway"
-
+  # Internal Prometheus container disabled — AI Incident Commander connects to Digg Project's Prometheus on port 9090
+  #  prometheus:
+  #    image: prom/prometheus:v2.51.0
+  #    container_name: aic-prometheus
+  #    restart: unless-stopped
+  #    ports:
+  #      - "9090:9090"
+  #    volumes:
+  #      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #      - ./alerts.yml:/etc/prometheus/alerts.yml
+  #    extra_hosts:
+  #      - "host.docker.internal:host-gateway"
 
   api-gateway:
     build:
@@ -186,5 +185,75 @@ services:
     ports:
       - "5174:80"
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.108.0
+    container_name: aic-otel-collector
+    restart: unless-stopped
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - tempo
+      - loki
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    container_name: aic-tempo
+    restart: unless-stopped
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200"
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: aic-loki
+    restart: unless-stopped
+    command: [ "-config.file=/etc/loki/loki-config.yaml" ]
+    volumes:
+      - ./loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+
+  aic-prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: aic-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=exemplar-storage"
+    volumes:
+      - ./aic-prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9091:9090"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: aic-grafana
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_FEATURE_TOGGLES_ENABLE: "traceqlEditor"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - aic-prometheus
+      - tempo
+      - loki
+
 volumes:
   mysql_data:
+  tempo_data:
+  loki_data:
+  grafana_data:
