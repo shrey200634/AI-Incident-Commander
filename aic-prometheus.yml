@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+storage:
+  tsdb:
+    out_of_order_time_window: 30m
+
+scrape_configs:
+  - job_name: 'aic-command-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['command-service:8081']
+
+  - job_name: 'aic-query-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['query-service:8082']
+
+  - job_name: 'aic-notification-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['notification-service:8084']
+
+  - job_name: 'aic-agent-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['agent-service:8083']
+
+  - job_name: 'aic-api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-gateway:8080']
