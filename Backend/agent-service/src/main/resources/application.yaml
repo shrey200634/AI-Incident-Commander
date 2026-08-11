@@ -28,6 +28,8 @@ spring:
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    listener:
+      observation-enabled: true
     consumer:
       group-id: agent-service-group
       auto-offset-reset: earliest
@@ -95,3 +97,5 @@ resilience4j:
 logging:
   level:
     org.springframework.ai.chat.client.advisor: DEBUG
+  pattern:
+    level: "%5p [${spring.application.name},%X{traceId:-},%X{spanId:-}]"

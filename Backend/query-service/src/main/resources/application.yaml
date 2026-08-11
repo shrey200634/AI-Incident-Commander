@@ -26,6 +26,10 @@ spring:
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    template:
+      observation-enabled: true
+    listener:
+      observation-enabled: true
     consumer:
       group-id: query-service-group
       auto-offset-reset: earliest
@@ -62,3 +66,7 @@ management:
   otlp:
     tracing:
       endpoint: http://otel-collector:4318/v1/traces
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{traceId:-},%X{spanId:-}]"
