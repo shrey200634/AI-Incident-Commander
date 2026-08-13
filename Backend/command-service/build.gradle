@@ -41,8 +41,7 @@ dependencies {
 	implementation 'com.github.docker-java:docker-java-transport-zerodep:3.4.0'
 
 	implementation 'io.micrometer:micrometer-registry-prometheus'
-	implementation 'io.micrometer:micrometer-tracing-bridge-otel'
-	implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+	implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
 }
 
 tasks.named('test') {
