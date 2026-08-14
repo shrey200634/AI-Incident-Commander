@@ -1,15 +1,17 @@
-package com.aiincidentcommander.query_service.config;
+package com.aiincidentcommander.notification_service.config;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender;
+import lombok.AllArgsConstructor;
+import lombok.Setter;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OpenTelemetryLogbackConfig implements InitializingBean {
+
+public class OpenTelemetryLogbackConfig  implements InitializingBean {
 
     private final OpenTelemetry openTelemetry;
-
     public OpenTelemetryLogbackConfig(OpenTelemetry openTelemetry){
         this.openTelemetry=openTelemetry;
     }

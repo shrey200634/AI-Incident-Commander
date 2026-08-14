@@ -69,6 +69,10 @@ management:
       export:
         otlp:
           endpoint: http://otel-collector:4318/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: http://otel-collector:4318/v1/logs
 
 # Base URL for calling Command Service's REST endpoints (approve/execute stay human-triggered;
 # Agent Service only calls proposeAction after investigating)
