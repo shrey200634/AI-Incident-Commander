@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class OpenTelemetryLogbackConfig implements InitializingBean {
 
-    private OpenTelemetry openTelemetry;
+    private final OpenTelemetry openTelemetry;
 
     public OpenTelemetryLogbackConfig(OpenTelemetry openTelemetry){
         this.openTelemetry=openTelemetry;
