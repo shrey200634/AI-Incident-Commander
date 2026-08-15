@@ -33,6 +33,7 @@ dependencies {
 	implementation 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
 	implementation 'io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:latest.release'
+	implementation 'io.opentelemetry:opentelemetry-api-incubator'
 
 
 }
