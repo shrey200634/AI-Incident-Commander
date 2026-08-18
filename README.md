@@ -10,6 +10,8 @@
 [![Apache Kafka](https://img.shields.io/badge/Kafka-7.6-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Gemini AI](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Grafana](https://img.shields.io/badge/Grafana-Tempo_%7C_Loki-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
+[![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Collector-425CC7?style=for-the-badge&logo=opentelemetry&logoColor=white)](https://opentelemetry.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 > **An event-driven, CQRS-based platform where AI agents autonomously investigate production incidents, diagnose root causes via live telemetry, and propose remediations — all with human-in-the-loop approval before any action executes.**
@@ -57,6 +59,8 @@
 | 💀 **Dead Letter Queue Admin** | Failed Kafka events are persisted to MySQL and can be inspected/replayed from the UI |
 | 🛡️ **Idempotency Protection** | Redis-backed idempotency keys prevent duplicate approve/execute operations |
 | 🔁 **Rollback & Escalation** | Failed remediations auto-generate compensating rollback actions; unresolvable incidents escalate |
+| 📡 **Full Observability Stack** | OpenTelemetry Collector ships traces/logs from every service to Tempo + Loki; Grafana dashboards unify metrics, traces, and logs |
+| 🔗 **Cross-Project Scaling** | `SCALE_WORKER_PODS` reads Docker Compose labels off the target container to scale services in *other* Compose projects (e.g. [Distributed Job Forge](../distributed-job-forge)) via a host-path mapping config |
 
 ---
 
@@ -116,6 +120,14 @@ graph TB
         GROQ["Groq LLaMA 3.3 70B"]
     end
 
+    subgraph Obs["📡 Observability Stack"]
+        OTEL["OTel Collector<br/>:4317 / :4318"]
+        TEMPO["Grafana Tempo<br/>:3200 (Traces)"]
+        LOKI["Grafana Loki<br/>:3100 (Logs)"]
+        AICPROM["aic-prometheus<br/>:9091 (Metrics)"]
+        GRAF["Grafana<br/>:3001 (Dashboards)"]
+    end
+
     UI <-->|REST + STOMP| GW
     GW -->|/api/incidents/**| CS
     GW -->|/api/query/**| QS
@@ -149,11 +161,19 @@ graph TB
 
     NSE -->|SMTP| EMAIL["📧 Email Server"]
 
+    CS & QS & AS & NS -.->|OTLP traces + logs| OTEL
+    OTEL --> TEMPO
+    OTEL --> LOKI
+    GRAF -->|PromQL| AICPROM
+    GRAF -->|TraceQL| TEMPO
+    GRAF -->|LogQL| LOKI
+
     style Client fill:#1a1a2e,stroke:#e94560,color:#fff
     style Gateway fill:#16213e,stroke:#0f3460,color:#fff
     style Services fill:#0f3460,stroke:#533483,color:#fff
     style Infra fill:#1a1a2e,stroke:#e94560,color:#fff
     style AI fill:#1a1a2e,stroke:#00d2ff,color:#fff
+    style Obs fill:#16213e,stroke:#F46800,color:#fff
 ```
 
 ---
@@ -610,8 +630,10 @@ The **single source of truth** for all state mutations. Every write operation pu
 | Action Type | Handler | What It Does |
 |:---|:---|:---|
 | `RESTART_SERVICE` | `DockerExecutionService` | Restarts Docker container via Docker socket |
-| `SCALE_WORKER_PODS` | `DockerExecutionService` | `docker compose up -d --scale {service}=N` |
-| `CLEAR_DEAD_LETTER_QUEUE` | `KafkaAdminService` | Deletes all records from a Kafka DLQ topic |
+| `SCALE_WORKER_PODS` | `DockerExecutionService` | Reads the target container's `com.docker.compose.project/service/working_dir` labels, resolves the correct (possibly cross-project) Compose file via `scaling.path-mappings`, and runs `docker compose -p <project> --scale {service}=N` |
+| `CLEAR_DEAD_LETTER_QUEUE` | `KafkaAdminService` | Deletes all records from a Kafka DLQ topic (checks topic existence first to avoid spurious errors) |
+
+> `SCALE_WORKER_PODS` isn't limited to this project's own containers — it can scale services in a **different** Compose project (e.g. Distributed Job Forge) as long as that project's directory is mounted read-only and mapped via `scaling.path-mappings` in `command-service`'s `application.yml`.
 
 ---
 
@@ -694,10 +716,10 @@ Spring Cloud Gateway WebMVC with route-based proxying:
 
 ### Prerequisites
 
-- **Java 21** (JDK)
+- **Java 21** (JDK) — only needed if building services outside Docker
 - **Docker & Docker Compose**
-- **Node.js 18+** (for frontend)
-- **Prometheus** (optional — for live telemetry)
+- **Node.js 18+** — only needed for frontend hot-reload dev mode
+- **Prometheus** (optional external instance) — the platform monitors your *own* microservices' metrics; if you don't have one, the bundled `aic-prometheus` container works standalone
 
 ### 1. Clone & Configure
 
@@ -706,7 +728,7 @@ git clone https://github.com/your-username/AI-Incident-Commander.git
 cd AI-Incident-Commander
 ```
 
-Copy the environment template and fill in your API keys:
+Copy the environment template and fill in your values:
 
 ```bash
 cp .env.example .env
@@ -715,6 +737,17 @@ cp .env.example .env
 Key environment variables:
 
 ```env
+# Database (MySQL)
+DB_USERNAME=root
+DB_PASSWORD=change_this_password
+MYSQL_ROOT_PASSWORD=change_this_password
+MYSQL_DATABASE=incident_commander
+MYSQL_PORT=3308
+
+# Redis / Kafka
+REDIS_PORT=6380
+KAFKA_PORT=9094
+
 # AI API Keys (required)
 GEMINI_API_KEY=your_gemini_api_key
 GROQ_API_KEY=your_groq_api_key
@@ -724,30 +757,59 @@ MAIL_USERNAME=your_email@gmail.com
 MAIL_PASSWORD=your_app_password
 ALERT_EMAIL=recipient@example.com
 
-# Prometheus (optional)
-PROMETHEUS_URL=http://localhost:9090
+# Telemetry target — services this platform monitors/investigates
+PROMETHEUS_URL=http://host.docker.internal:9090
+MONITORED_SERVICES=order-service,payment-service
+ANOMALY_LATENCY_THRESHOLD_MS=500
+
+# Docker execution engine
+DOCKER_HOST=tcp://localhost:2375
+DOCKER_COMPOSE_DIR=C:/AI Incident Commander
+
+# Optional — enables SCALE_WORKER_PODS against another Compose project
+# (host path -> the read-only mount `command-service` exposes it under)
+DJF_PROJECT_DIR=C:/DistributedJobForge
 ```
 
-### 2. Start Infrastructure + Backend
+> The `docker-compose.yml` `scaling.path-mappings` config (in `command-service`'s `application.yml`) maps that host path to `/djf-workspace` inside the container, so `SCALE_WORKER_PODS` can target a sibling project's Compose file directly.
+
+### 2. Start Everything
 
 ```bash
 docker compose up --build -d
 ```
 
-This starts all 5 backend services + MySQL + Redis + Kafka + Zookeeper.
+This single command builds and starts **all 5 backend services, the frontend, and the full observability stack** — 15 containers total: MySQL, Redis, Zookeeper, Kafka, the 5 Spring Boot services, the React frontend (served via Nginx), OTel Collector, Tempo, Loki, `aic-prometheus`, and Grafana.
 
-| Service | Port | Health Check |
+**Application services:**
+
+| Service | Host Port → Container | Health Check |
 |:---|:---:|:---|
-| API Gateway | `8080` | `http://localhost:8080/actuator/health` |
-| Command Service | `8081` | `http://localhost:8081/actuator/health` |
-| Query Service | `8082` | `http://localhost:8082/actuator/health` |
-| Agent Service | `8083` | `http://localhost:8083/actuator/health` |
-| Notification Service | `8084` | `http://localhost:8084/actuator/health` |
-| MySQL | `3307` | — |
-| Redis | `6379` | — |
-| Kafka | `9092` | — |
+| Frontend (Nginx) | `5174` → `80` | `http://localhost:5174` |
+| API Gateway | `18080` → `8080` | `http://localhost:18080/actuator/health` |
+| Command Service | `18081` → `8081` | `http://localhost:18081/actuator/health` |
+| Query Service | `18082` → `8082` | `http://localhost:18082/actuator/health` |
+| Agent Service | `18083` → `8083` | `http://localhost:18083/actuator/health` |
+| Notification Service | `18084` → `8084` | `http://localhost:18084/actuator/health` |
+| MySQL | `${MYSQL_PORT}` → `3306` | — |
+| Redis | `${REDIS_PORT}` → `6379` | — |
+| Kafka | `${KAFKA_PORT}` → `9092` | — |
 
-### 3. Start Frontend
+**Observability stack:**
+
+| Service | Port | Purpose |
+|:---|:---:|:---|
+| Grafana | `3001` | Unified dashboards (metrics + traces + logs); anonymous admin access enabled for local dev |
+| aic-prometheus | `9091` | Scrapes `/actuator/prometheus` from all 5 services; remote-write + exemplar storage enabled |
+| Tempo | `3200` | Distributed trace storage (100% sampling from every service) |
+| Loki | `3100` | Centralized log aggregation |
+| OTel Collector | `4317` / `4318` | OTLP gRPC / HTTP ingestion from all services, forwarding to Tempo + Loki |
+
+Open **http://localhost:5174** for the dashboard, or **http://localhost:3001** for Grafana.
+
+### 3. (Optional) Frontend Dev Mode
+
+For hot-reload during frontend development, run it outside Docker instead:
 
 ```bash
 cd Frontend
@@ -755,16 +817,18 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173** in your browser (point `Frontend/.env`'s API base URL at `http://localhost:18080`).
 
 ---
 
 ## 📡 API Reference
 
+> Examples below target the Docker Compose gateway port (`18080`). If you're running `api-gateway` standalone (outside Docker), use `8080` instead.
+
 ### Create an Incident
 
 ```bash
-curl -X POST http://localhost:8080/api/incidents \
+curl -X POST http://localhost:18080/api/incidents \
   -H "Content-Type: application/json" \
   -d '{
     "serviceName": "order-service",
@@ -775,7 +839,7 @@ curl -X POST http://localhost:8080/api/incidents \
 ### Approve an Action (Idempotent)
 
 ```bash
-curl -X POST http://localhost:8080/api/incidents/1/actions/1/approve \
+curl -X POST http://localhost:18080/api/incidents/1/actions/1/approve \
   -H "Content-Type: application/json" \
   -H "X-Idempotency-Key: $(uuidgen)" \
   -d '{"approvedBy": "ops-engineer-1"}'
@@ -784,14 +848,14 @@ curl -X POST http://localhost:8080/api/incidents/1/actions/1/approve \
 ### Execute an Action
 
 ```bash
-curl -X POST http://localhost:8080/api/incidents/1/actions/1/execute \
+curl -X POST http://localhost:18080/api/incidents/1/actions/1/execute \
   -H "X-Idempotency-Key: $(uuidgen)"
 ```
 
 ### Escalate an Incident
 
 ```bash
-curl -X PATCH http://localhost:8080/api/incidents/1/status \
+curl -X PATCH http://localhost:18080/api/incidents/1/status \
   -H "Content-Type: application/json" \
   -d '{
     "targetStatus": "ESCALATED",
@@ -802,7 +866,7 @@ curl -X PATCH http://localhost:8080/api/incidents/1/status \
 ### Replay a DLQ Record
 
 ```bash
-curl -X POST http://localhost:8080/api/admin/dlq/1/replay
+curl -X POST http://localhost:18080/api/admin/dlq/1/replay
 ```
 
 ---
@@ -852,9 +916,19 @@ curl -X POST http://localhost:8080/api/admin/dlq/1/replay
 
 | Technology | Purpose |
 |:---|:---|
-| **Docker Compose** | Multi-container orchestration |
-| **Prometheus** | Metrics collection |
+| **Docker Compose** | Multi-container orchestration (15 containers) |
 | **Zookeeper** | Kafka coordination |
+| **Nginx** | Serves the built frontend in production/Docker mode |
+
+### Observability
+
+| Technology | Purpose |
+|:---|:---|
+| **OpenTelemetry Collector** | Central OTLP ingestion (gRPC `:4317` / HTTP `:4318`); fans out traces + logs |
+| **Grafana Tempo** | Distributed trace backend (100% sampling from every Spring Boot service) |
+| **Grafana Loki** | Log aggregation backend |
+| **Prometheus** (`aic-prometheus`) | Scrapes `/actuator/prometheus` from all 5 services; remote-write + exemplar storage |
+| **Grafana** | Unified dashboards correlating metrics, traces, and logs; provisioned via `grafana/provisioning/` |
 
 ---
 
@@ -863,7 +937,13 @@ curl -X POST http://localhost:8080/api/admin/dlq/1/replay
 ```
 AI-Incident-Commander/
 ├── .env                              # Environment configuration
-├── docker-compose.yml                # Full stack orchestration
+├── docker-compose.yml                # Full stack orchestration (15 containers)
+├── otel-collector-config.yml         # OTLP receiver -> Tempo/Loki exporters
+├── tempo.yml                         # Grafana Tempo trace backend config
+├── loki-config.yml                   # Grafana Loki log backend config
+├── aic-prometheus.yml                # Prometheus scrape config (all 5 services)
+├── alerts.yml                        # Prometheus alerting rules
+├── grafana/provisioning/             # Auto-provisioned datasources + dashboards
 │
 ├── Backend/
 │   ├── api-gateway/                  # Spring Cloud Gateway (:8080)
@@ -888,6 +968,8 @@ AI-Incident-Commander/
 │       └── service/                  #   EmailNotificationService
 │
 └── Frontend/
+    ├── Dockerfile                    # Multi-stage build -> Nginx (served at :5174 in Docker)
+    ├── nginx.conf                    # SPA routing + API proxy config
     └── src/
         ├── api/                      # Axios API client
         ├── components/               # Sidebar, CreateIncidentModal, StatusBadge
