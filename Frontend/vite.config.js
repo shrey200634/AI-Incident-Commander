@@ -6,6 +6,13 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
+
+
+     '/api/auth': {
+        target: 'http://localhost:18080',
+        changeOrigin: true,
+      },
+
       // Command Service (writes via Gateway or Direct)
       '/api/incidents': {
         target: 'http://localhost:18080',

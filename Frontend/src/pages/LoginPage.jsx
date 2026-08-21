@@ -14,9 +14,13 @@ export default function LoginPage() {
     try {
       await login(userName, password);
       navigate('/');
-    } catch {
-      setError('Invalid username or password');
-    }
+    } catch(err) {
+      if (err.response?.status === 401) {
+          setError('Invalid username or password');
+        } else {
+          setError(`Login failed: ${err.message}`);
+        }
+      }
   };
 
   return (
