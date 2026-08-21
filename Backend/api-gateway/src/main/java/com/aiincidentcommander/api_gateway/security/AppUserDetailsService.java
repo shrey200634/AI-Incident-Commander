@@ -1,6 +1,8 @@
 package com.aiincidentcommander.api_gateway.security;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -8,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -16,16 +19,21 @@ public class AppUserDetailsService implements UserDetailsService {
 
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.security.admin-username:admin}")
+    private String adminUsername;
+
+    @Value("${app.security.admin-password:admin123}")
+    private String adminPassword;
 
     private Map<String, AppUser> users;
 
-    @jakarta.annotation.PostConstruct
+    @PostConstruct
     private void seedUsers() {
         users = Map.of(
-                "admin", AppUser.builder()
-                        .userName("admin")
-                        .password(passwordEncoder.encode("admin123"))
-                        .roles(java.util.List.of("ADMIN"))
+                adminUsername, AppUser.builder()
+                        .userName(adminUsername)
+                        .password(passwordEncoder.encode(adminPassword))
+                        .roles(List.of("ADMIN"))
                         .build()
         );
     }

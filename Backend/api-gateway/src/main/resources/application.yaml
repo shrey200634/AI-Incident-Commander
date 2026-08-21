@@ -1,6 +1,14 @@
 server:
   port: 8080
 
+app:
+  security:
+    users:
+      - userName: "${ADMIN_USERNAME:admin}"
+        password: "${ADMIN_PASSWORD:admin123}"
+        roles:
+          - "ADMIN"
+
 jwt:
   secret: ${JWT_SECRET:this-is-a-dev-only-secret-change-me-please-32chars-min}
   expiration-ms: 3600000   # 1 hour
