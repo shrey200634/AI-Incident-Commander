@@ -3,10 +3,10 @@ import axios from 'axios';
 const TOKEN_KEY = 'aic_token';
 
 export const authStorage = {
-  getToken: () => localStorage.getItem(TOKEN_KEY),
-  setToken: (token) => localStorage.setItem(TOKEN_KEY, token),
-  clearToken: () => localStorage.removeItem(TOKEN_KEY),
-  isLoggedIn: () => !!localStorage.getItem(TOKEN_KEY),
+  getToken: () => sessionStorage.getItem(TOKEN_KEY),
+  setToken: (token) => sessionStorage.setItem(TOKEN_KEY, token),
+  clearToken: () => sessionStorage.removeItem(TOKEN_KEY),
+  isLoggedIn: () => !!sessionStorage.getItem(TOKEN_KEY),
 };
 
 export const login = (userName, password) =>

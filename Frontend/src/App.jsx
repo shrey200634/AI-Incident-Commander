@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardPage from './pages/DashboardPage';
@@ -94,20 +94,23 @@ function AuthenticatedApp() {
   );
 }
 
+// Subscribing to useLocation() forces this component to re-render on every
+// navigation, so authStorage.isLoggedIn() is re-checked each time instead of
+// once at first mount.
+function ProtectedRoute() {
+  useLocation();
+  return authStorage.isLoggedIn() ? (
+    <AuthenticatedApp />
+  ) : (
+    <Navigate to="/login" replace />
+  );
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/*"
-        element={
-          authStorage.isLoggedIn() ? (
-            <AuthenticatedApp />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+      <Route path="/*" element={<ProtectedRoute />} />
     </Routes>
   );
 }
