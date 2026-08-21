@@ -1,0 +1,317 @@
+/* ============================================================
+   Login — extends the existing AI Incident Commander design
+   system. Uses tokens from App.css (--bg-root, --accent, etc.)
+   No new colors are introduced; only layout + a few keyframes.
+   ============================================================ */
+
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  background: var(--bg-root);
+}
+
+/* ---------------- Left: brand / mission-control panel ---------------- */
+
+.login-brand-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 48px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.login-brand-glow {
+  position: absolute;
+  top: -180px;
+  right: -180px;
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, rgba(91, 141, 239, 0.16) 0%, rgba(91, 141, 239, 0) 70%);
+  pointer-events: none;
+}
+
+.login-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1;
+}
+
+.login-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--accent), var(--color-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.login-brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.login-brand-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.login-brand-copy {
+  z-index: 1;
+  max-width: 420px;
+}
+
+.login-brand-copy h1 {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  margin-bottom: 14px;
+}
+
+.login-brand-copy p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.login-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+}
+
+.login-status-block {
+  z-index: 1;
+}
+
+.login-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.login-status-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.login-feed-block {
+  z-index: 1;
+  margin-top: auto;
+}
+
+.login-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  animation: login-feed-in 0.35s ease both;
+}
+
+.login-feed-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.login-feed-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+@keyframes login-feed-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------------- Right: form panel ---------------- */
+
+.login-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+}
+
+.login-form-card {
+  width: 100%;
+  max-width: 360px;
+  animation: login-card-in 0.4s ease both;
+}
+
+@keyframes login-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-form-header {
+  margin-bottom: 28px;
+}
+
+.login-form-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.login-form-header p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-icon {
+  position: absolute;
+  left: 13px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.login-input {
+  padding-left: 38px;
+  padding-right: 38px;
+}
+
+.login-visibility-toggle {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.login-visibility-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  background: var(--color-critical-muted);
+  color: var(--color-critical);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.login-submit {
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.login-btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.login-footnote {
+  margin-top: 20px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ---------------- Responsive ---------------- */
+
+@media (max-width: 960px) {
+  .login-screen {
+    grid-template-columns: 1fr;
+  }
+  .login-brand-panel {
+    padding: 32px;
+    gap: 24px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .login-brand-copy h1 {
+    font-size: 24px;
+  }
+  .login-feed-block {
+    margin-top: 0;
+  }
+  .login-feed-item:nth-child(n+3) {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-brand-copy p {
+    display: none;
+  }
+  .login-feed {
+    display: none;
+  }
+  .login-form-panel {
+    padding: 32px 20px 40px;
+  }
+}
+
+/* ---------------- Reduced motion ---------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-feed-item,
+  .login-form-card {
+    animation: none;
+  }
+}
