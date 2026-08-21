@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import DashboardPage from './pages/DashboardPage';
@@ -6,10 +6,12 @@ import IncidentsPage from './pages/IncidentsPage';
 import IncidentDetailPage from './pages/IncidentDetailPage';
 import DlqAdminPage from './pages/DlqAdminPage';
 import TelemetryPage from './pages/TelemetryPage';
+import LoginPage from './pages/LoginPage';
 import { useWebSocket } from './hooks/useWebSocket';
 import { queryApi, adminDlqApi } from './api/client';
+import { authStorage } from './api/auth';
 
-export default function App() {
+function AuthenticatedApp() {
   const { connected, subscribe } = useWebSocket();
   const [activeCount, setActiveCount] = useState(0);
   const [dlqCount, setDlqCount] = useState(0);
@@ -89,5 +91,23 @@ export default function App() {
         </Routes>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/*"
+        element={
+          authStorage.isLoggedIn() ? (
+            <AuthenticatedApp />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+    </Routes>
   );
 }
