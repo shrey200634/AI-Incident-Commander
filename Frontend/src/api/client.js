@@ -6,6 +6,29 @@ const api = axios.create({
   timeout: 5000,
 });
 
+import { authStorage } from './auth';
+
+// attach token to every outgoing request
+api.interceptors.request.use((config) => {
+  const token = authStorage.getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// on 401, drop the stale token and force re-login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      authStorage.clearToken();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ── Query Service (CQRS Read Side — Port 8082 / Gateway 8080) ───
 export const queryApi = {
   getAllIncidents: () =>
