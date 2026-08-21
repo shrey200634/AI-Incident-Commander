@@ -19,10 +19,10 @@ public class AppUserDetailsService implements UserDetailsService {
 
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.security.admin-username:admin}")
+    @Value("${app.security.admin-username}")
     private String adminUsername;
 
-    @Value("${app.security.admin-password:admin123}")
+    @Value("${app.security.admin-password}")
     private String adminPassword;
 
     private Map<String, AppUser> users;

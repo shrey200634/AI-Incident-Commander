@@ -4,8 +4,8 @@ server:
 app:
   security:
     users:
-      - userName: "${ADMIN_USERNAME:admin}"
-        password: "${ADMIN_PASSWORD:admin123}"
+      - userName: ${ADMIN_USERNAME:admin}
+        password: ${ADMIN_PASSWORD}
         roles:
           - "ADMIN"
 
