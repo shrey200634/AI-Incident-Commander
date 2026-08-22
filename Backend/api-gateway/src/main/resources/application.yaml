@@ -13,6 +13,18 @@ jwt:
   secret: ${JWT_SECRET:this-is-a-dev-only-secret-change-me-please-32chars-min}
   expiration-ms: 3600000   # 1 hour
 
+springdoc:
+  swagger-ui:
+    urls:
+      - name: API Gateway (Auth)
+        url: /v3/api-docs
+      - name: Command Service
+        url: http://localhost:18081/v3/api-docs
+      - name: Query Service
+        url: http://localhost:18082/v3/api-docs
+      - name: Agent Service
+        url: http://localhost:18083/v3/api-docs
+
 spring:
   application:
     name: api-gateway
