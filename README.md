@@ -6,17 +6,19 @@
 
 [![Java 21](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring Security](https://img.shields.io/badge/Spring%20Security-JWT-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white)](https://spring.io/projects/spring-security)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Apache Kafka](https://img.shields.io/badge/Kafka-7.6-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Gemini AI](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 [![Grafana](https://img.shields.io/badge/Grafana-Tempo_%7C_Loki-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Collector-425CC7?style=for-the-badge&logo=opentelemetry&logoColor=white)](https://opentelemetry.io/)
+[![Swagger](https://img.shields.io/badge/OpenAPI-Swagger_UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](https://swagger.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 > **An event-driven, CQRS-based platform where AI agents autonomously investigate production incidents, diagnose root causes via live telemetry, and propose remediations — all with human-in-the-loop approval before any action executes.**
 
-[Features](#-key-features) · [Architecture](#-high-level-design-hld) · [Low-Level Design](#-low-level-design-lld) · [Getting Started](#-getting-started) · [API Reference](#-api-reference) · [Tech Stack](#%EF%B8%8F-tech-stack)
+[Features](#-key-features) · [Architecture](#-high-level-design-hld) · [Low-Level Design](#-low-level-design-lld) · [Security](#-security) · [Getting Started](#-getting-started) · [API Reference](#-api-reference) · [API Docs (Swagger)](#-api-documentation-swagger--openapi) · [Tech Stack](#%EF%B8%8F-tech-stack)
 
 </div>
 
@@ -38,8 +40,13 @@
   - [Circuit Breaker & Resilience](#circuit-breaker--resilience-pattern)
   - [Dead Letter Queue (DLQ) Pipeline](#dead-letter-queue-dlq-pipeline)
 - [Service Breakdown](#-service-breakdown)
+- [🔐 Security](#-security)
+  - [Authentication Flow](#authentication-flow)
+  - [What's Protected](#whats-protected)
+  - [Security Configuration](#security-configuration)
 - [Getting Started](#-getting-started)
 - [API Reference](#-api-reference)
+- [API Documentation (Swagger / OpenAPI)](#-api-documentation-swagger--openapi)
 - [Frontend Pages](#-frontend-pages)
 - [Tech Stack](#%EF%B8%8F-tech-stack)
 
@@ -61,6 +68,10 @@
 | 🔁 **Rollback & Escalation** | Failed remediations auto-generate compensating rollback actions; unresolvable incidents escalate |
 | 📡 **Full Observability Stack** | OpenTelemetry Collector ships traces/logs from every service to Tempo + Loki; Grafana dashboards unify metrics, traces, and logs |
 | 🔗 **Cross-Project Scaling** | `SCALE_WORKER_PODS` reads Docker Compose labels off the target container to scale services in *other* Compose projects (e.g. [Distributed Job Forge](../distributed-job-forge)) via a host-path mapping config |
+| 🔐 **JWT Authentication** | Stateless, BCrypt + JWT-secured login at the API Gateway; every downstream call from the SPA carries a signed `Bearer` token |
+| 🧾 **Centralized Swagger / OpenAPI** | Each service exposes its own `springdoc-openapi` spec; the Gateway's Swagger UI aggregates all four into a single interactive API console |
+
+
 
 ---
 
@@ -76,6 +87,8 @@ graph TB
 
     subgraph Gateway["🌐 API Gateway — :8080"]
         GW["Spring Cloud Gateway WebMVC<br/>Route-based Proxy"]
+        SEC["Spring Security<br/>JWT Auth Filter"]
+        SWG["springdoc Swagger UI<br/>Aggregated API Docs"]
     end
 
     subgraph Services["⚙️ Backend Microservices"]
@@ -129,6 +142,9 @@ graph TB
     end
 
     UI <-->|REST + STOMP| GW
+    GW --> SEC
+    SEC -->|validates Bearer JWT| GW
+    GW -.-> SWG
     GW -->|/api/incidents/**| CS
     GW -->|/api/query/**| QS
     GW -->|/api/agent/**| AS
@@ -702,13 +718,96 @@ Consumes specific Kafka topics and sends email alerts asynchronously.
 
 ### API Gateway (`:8080`) — Entry Point
 
-Spring Cloud Gateway WebMVC with route-based proxying:
+Spring Cloud Gateway WebMVC with route-based proxying, and the platform's **security perimeter** — JWT issuance/validation and the aggregated Swagger UI both live here.
 
 | Route Pattern | Target |
 |:---|:---|
+| `/api/auth/**` | Handled locally (login → JWT issuance) |
 | `/api/incidents/**` | Command Service `:8081` |
 | `/api/query/**` | Query Service `:8082` |
 | `/api/agent/**` | Agent Service `:8083` |
+| `/v3/api-docs/**`, `/swagger-ui/**` | Handled locally (aggregated OpenAPI docs) |
+
+---
+
+## 🔐 Security
+
+The platform is secured end-to-end with **stateless JWT authentication**, enforced at the API Gateway — the single public entry point for the SPA and any external client.
+
+### Authentication Flow
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 User
+    participant UI as React Dashboard
+    participant GW as API Gateway
+    participant SEC as Spring Security<br/>(JwtAuthFilter)
+    participant SVC as Downstream Service<br/>(Command / Query / Agent)
+
+    User->>UI: Enter username & password
+    UI->>GW: POST /api/auth/login
+    GW->>GW: AuthenticationManager verifies credentials<br/>(BCryptPasswordEncoder)
+    GW-->>UI: 200 OK { token: "<JWT>" }
+    UI->>UI: Store token in sessionStorage
+
+    Note over UI,GW: Every subsequent request
+
+    UI->>GW: GET/POST ... Authorization: Bearer <JWT>
+    GW->>SEC: JwtAuthFilter intercepts request
+    SEC->>SEC: Extract username, verify signature + expiry
+    alt Token valid
+        SEC->>GW: SecurityContext populated
+        GW->>SVC: Proxy request downstream
+        SVC-->>UI: 200 OK + data
+    else Token missing / invalid / expired
+        SEC-->>UI: 401 Unauthorized (JSON error body)
+    end
+```
+
+**How it works:**
+
+1. **Login** — `POST /api/auth/login` accepts `{ userName, password }`. Credentials are checked via a `DaoAuthenticationProvider` backed by an in-memory `AppUserDetailsService`, seeded at startup from `ADMIN_USERNAME` / `ADMIN_PASSWORD` and hashed with **BCrypt**.
+2. **Token issuance** — On success, `JwtService` signs an **HS256 JWT** (subject = username, 1‑hour expiry by default) using a secret from `JWT_SECRET`.
+3. **Token storage** — The React SPA stores the token in `sessionStorage` (cleared on tab close) and attaches it as `Authorization: Bearer <token>` to every Axios request via an interceptor.
+4. **Token validation** — `JwtAuthFilter` (a `OncePerRequestFilter`) runs before Spring Security's built-in auth filter on every request, extracts and validates the token, and populates the `SecurityContext` so downstream `authorizeHttpRequests` rules apply.
+5. **Session handling** — The gateway is fully **stateless** (`SessionCreationPolicy.STATELESS`); no server-side session state — every request is authenticated independently from its token.
+6. **Auto-logout** — The frontend's Axios response interceptor watches for `401` responses, clears the stored token, and redirects to `/login`.
+
+### What's Protected
+
+| Path | Access |
+|:---|:---|
+| `/api/auth/**` | Public — login endpoint |
+| `/actuator/**` | Public — health checks & Prometheus scraping |
+| `/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html` | Public — API documentation |
+| Everything else (`/api/incidents/**`, `/api/query/**`, `/api/agent/**`, ...) | **Requires a valid JWT** |
+
+Unauthenticated or unauthorized calls receive a structured JSON error instead of Spring's default HTML error page:
+
+```json
+// 401 — missing/invalid token
+{ "status": 401, "error": "Unauthorized", "message": "Missing or invalid token", "path": "/api/incidents" }
+
+// 403 — authenticated but insufficient role
+{ "status": 403, "error": "Forbidden", "message": "You don't have permission for this resource", "path": "/api/admin/dlq" }
+```
+
+### Security Configuration
+
+| Component | File | Responsibility |
+|:---|:---|:---|
+| `SecurityConfig` | `api-gateway/.../config/SecurityConfig.java` | Defines the `SecurityFilterChain`: stateless sessions, CSRF disabled (pure REST API), route-level authorization rules |
+| `JwtAuthFilter` | `api-gateway/.../config/JwtAuthFilter.java` | Per-request filter that extracts, validates, and applies the JWT to the security context |
+| `JwtService` | `api-gateway/.../security/JwtService.java` | Signs and parses HS256 JWTs via `jjwt` |
+| `JwtProperties` | `api-gateway/.../security/JwtProperties.java` | Binds `jwt.secret` / `jwt.expiration-ms` from configuration |
+| `AppUserDetailsService` | `api-gateway/.../security/AppUserDetailsService.java` | Seeds the admin user (from env vars) and implements Spring Security's `UserDetailsService` |
+| `PasswordConfig` | `api-gateway/.../config/PasswordConfig.java` | Exposes the `BCryptPasswordEncoder` bean |
+| `SecurityErrorHandlers` | `api-gateway/.../config/SecurityErrorHandlers.java` | JSON `401`/`403` response bodies instead of default Spring error pages |
+| `AuthController` | `api-gateway/.../controller/AuthController.java` | `POST /api/auth/login` — the only unauthenticated write endpoint |
+
+> ⚠️ **Trust boundary note:** JWT validation currently happens **only at the API Gateway**. Command/Query/Agent/Notification services do not independently verify the token — they trust traffic arriving from the gateway. In production, run these services on a private network/VPC not reachable directly from outside the gateway (the bundled `docker-compose.yml` already keeps them off the host network except via their debug port mappings), or add a shared-secret / mTLS check between services for defense in depth.
+
+> 🔑 **Credentials are configuration, not code.** Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `JWT_SECRET` via environment variables (see `.env.example`) — never commit real credentials. Rotate `JWT_SECRET` to invalidate all outstanding tokens.
 
 ---
 
@@ -737,6 +836,11 @@ cp .env.example .env
 Key environment variables:
 
 ```env
+# Authentication (API Gateway)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change_this_password
+JWT_SECRET=replace-with-a-long-random-string-min-256-bits
+
 # Database (MySQL)
 DB_USERNAME=root
 DB_PASSWORD=change_this_password
@@ -823,12 +927,25 @@ Open **http://localhost:5173** in your browser (point `Frontend/.env`'s API base
 
 ## 📡 API Reference
 
-> Examples below target the Docker Compose gateway port (`18080`). If you're running `api-gateway` standalone (outside Docker), use `8080` instead.
+> Examples below target the Docker Compose gateway port (`18080`). If you're running `api-gateway` standalone (outside Docker), use `8080` instead. Every endpoint except `/api/auth/login`, `/actuator/**`, and the Swagger paths **requires** an `Authorization: Bearer <token>` header — see [Security](#-security).
+
+### 0. Log In (required first)
+
+```bash
+curl -X POST http://localhost:18080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"userName": "admin", "password": "change_this_password"}'
+
+# → { "token": "eyJhbGciOiJIUzI1NiJ9..." }
+
+export TOKEN="eyJhbGciOiJIUzI1NiJ9..."   # save it for the calls below
+```
 
 ### Create an Incident
 
 ```bash
 curl -X POST http://localhost:18080/api/incidents \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "serviceName": "order-service",
@@ -840,6 +957,7 @@ curl -X POST http://localhost:18080/api/incidents \
 
 ```bash
 curl -X POST http://localhost:18080/api/incidents/1/actions/1/approve \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "X-Idempotency-Key: $(uuidgen)" \
   -d '{"approvedBy": "ops-engineer-1"}'
@@ -849,6 +967,7 @@ curl -X POST http://localhost:18080/api/incidents/1/actions/1/approve \
 
 ```bash
 curl -X POST http://localhost:18080/api/incidents/1/actions/1/execute \
+  -H "Authorization: Bearer $TOKEN" \
   -H "X-Idempotency-Key: $(uuidgen)"
 ```
 
@@ -856,6 +975,7 @@ curl -X POST http://localhost:18080/api/incidents/1/actions/1/execute \
 
 ```bash
 curl -X PATCH http://localhost:18080/api/incidents/1/status \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "targetStatus": "ESCALATED",
@@ -866,8 +986,32 @@ curl -X PATCH http://localhost:18080/api/incidents/1/status \
 ### Replay a DLQ Record
 
 ```bash
-curl -X POST http://localhost:18080/api/admin/dlq/1/replay
+curl -X POST http://localhost:18080/api/admin/dlq/1/replay \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+---
+
+## 📘 API Documentation (Swagger / OpenAPI)
+
+Every backend service ships its own **springdoc-openapi** spec, and the API Gateway aggregates all of them into a single Swagger UI.
+
+| Service | Swagger UI | Raw OpenAPI JSON |
+|:---|:---|:---|
+| **API Gateway (aggregated)** | `http://localhost:18080/swagger-ui.html` | `http://localhost:18080/v3/api-docs` |
+| Command Service | `http://localhost:18081/swagger-ui.html` | `http://localhost:18081/v3/api-docs` |
+| Query Service | `http://localhost:18082/swagger-ui.html` | `http://localhost:18082/v3/api-docs` |
+| Agent Service | `http://localhost:18083/swagger-ui.html` | `http://localhost:18083/v3/api-docs` |
+
+Open the **Gateway's** Swagger UI and use the dropdown in the top-right corner to switch between **API Gateway (Auth)**, **Command Service**, **Query Service**, and **Agent Service** — no need to open four separate tabs.
+
+**Trying protected endpoints from Swagger:**
+
+1. Expand `POST /api/auth/login` under the Gateway spec, execute it with your admin credentials, and copy the `token` from the response.
+2. Click the **Authorize 🔒** button at the top of the page and paste the token as `Bearer <token>`.
+3. All subsequent "Try it out" calls automatically include the `Authorization` header.
+
+`/v3/api-docs/**` and `/swagger-ui/**` are explicitly allow-listed in `SecurityConfig`, so the documentation itself is reachable without a token — only the operations you execute *from* it need one.
 
 ---
 
@@ -875,6 +1019,7 @@ curl -X POST http://localhost:18080/api/admin/dlq/1/replay
 
 | Page | Route | Description |
 |:---|:---|:---|
+| **Login** | `/login` | JWT-based sign-in; stores the token in `sessionStorage` and gates every other route |
 | **Dashboard** | `/` | Live overview with active incident count, severity breakdown, and real-time WebSocket updates |
 | **Incidents** | `/incidents` | Full incident list with status filtering and create-incident modal |
 | **Incident Detail** | `/incidents/:id` | Complete incident timeline with action lifecycle controls (approve/reject/execute/rollback/escalate/resolve) |
@@ -893,6 +1038,10 @@ curl -X POST http://localhost:18080/api/admin/dlq/1/replay
 | **Spring Boot 4.1** | Application framework |
 | **Spring AI 2.0** | LLM integration (Gemini + OpenAI-compatible) |
 | **Spring Cloud Gateway** | API gateway routing |
+| **Spring Security** | Authentication & authorization at the gateway |
+| **jjwt (JSON Web Token)** | JWT signing/parsing (HS256) |
+| **BCrypt** | Password hashing |
+| **springdoc-openapi (Swagger UI)** | Interactive, auto-generated API documentation per service |
 | **Apache Kafka 7.6** | Event streaming / CQRS event bus |
 | **MySQL 8.0** | Persistent storage (command + query + DLQ + notifications) |
 | **Redis 7** | Caching (metrics, idempotency keys) |
@@ -908,9 +1057,10 @@ curl -X POST http://localhost:18080/api/admin/dlq/1/replay
 | **React 19** | UI library |
 | **Vite 8** | Build tooling & dev server |
 | **React Router 7** | Client-side routing |
-| **Axios** | HTTP client |
+| **Axios** | HTTP client with request/response interceptors (attaches JWT, handles 401 auto-logout) |
 | **STOMP.js + SockJS** | WebSocket client |
 | **Lucide React** | Icon library |
+| **sessionStorage** | Client-side JWT storage (cleared when the tab closes) |
 
 ### Infrastructure
 
@@ -946,23 +1096,27 @@ AI-Incident-Commander/
 ├── grafana/provisioning/             # Auto-provisioned datasources + dashboards
 │
 ├── Backend/
-│   ├── api-gateway/                  # Spring Cloud Gateway (:8080)
+│   ├── api-gateway/                  # Spring Cloud Gateway + Security perimeter (:8080)
+│   │   ├── controller/               #   AuthController (POST /api/auth/login)
+│   │   ├── security/                 #   AppUser, AppUserDetailsService, JwtService, JwtProperties
+│   │   └── config/                   #   SecurityConfig, JwtAuthFilter, PasswordConfig,
+│   │                                 #   SecurityErrorHandlers, OpenApiConfig (Swagger)
 │   ├── command-service/              # CQRS Write Side (:8081)
 │   │   ├── controller/               #   REST endpoints
 │   │   ├── model/                    #   JPA entities (Incident, RemediationAction)
 │   │   ├── service/                  #   Business logic + Docker + Kafka admin
 │   │   ├── event/                    #   Kafka event publisher
-│   │   └── config/                   #   Kafka topics, Docker, Redis
+│   │   └── config/                   #   Kafka topics, Docker, Redis, OpenApiConfig (Swagger)
 │   ├── query-service/                # CQRS Read Side (:8082)
 │   │   ├── controller/               #   Query endpoints + DLQ admin
 │   │   ├── event/                    #   Kafka consumers (incident + action)
 │   │   ├── websocket/                #   STOMP WebSocket relay
-│   │   └── config/                   #   DLQ recoverer, error handling
+│   │   └── config/                   #   DLQ recoverer, error handling, OpenApiConfig (Swagger)
 │   ├── agent-service/                # AI Brain (:8083)
 │   │   ├── service/                  #   AiService (dual-LLM) + AgentTools
 │   │   ├── client/                   #   MetricsClient + CommandServiceClient
 │   │   ├── event/                    #   Kafka listener (incident.created)
-│   │   └── config/                   #   Prometheus, Redis, AI configs
+│   │   └── config/                   #   Prometheus, Redis, AI configs, OpenApiConfig (Swagger)
 │   └── notification-service/         # Email Alerts (:8084)
 │       ├── event/                    #   Kafka listeners
 │       └── service/                  #   EmailNotificationService
@@ -971,10 +1125,10 @@ AI-Incident-Commander/
     ├── Dockerfile                    # Multi-stage build -> Nginx (served at :5174 in Docker)
     ├── nginx.conf                    # SPA routing + API proxy config
     └── src/
-        ├── api/                      # Axios API client
+        ├── api/                      # auth.js (login/token) + client.js (Axios + JWT interceptors)
         ├── components/               # Sidebar, CreateIncidentModal, StatusBadge
         ├── hooks/                    # useWebSocket (STOMP)
-        ├── pages/                    # Dashboard, Incidents, Detail, Telemetry, DLQ
+        ├── pages/                    # Login, Dashboard, Incidents, Detail, Telemetry, DLQ
         └── index.css                 # Design system
 ```
 
