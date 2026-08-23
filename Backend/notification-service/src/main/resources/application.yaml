@@ -62,6 +62,11 @@ management:
         http.server.requests: 1ms
       maximum-expected-value:
         http.server.requests: 10s
+  otlp:
+    metrics:
+      export:
+        url: http://otel-collector:4318/v1/metrics
+        step: 15s
   tracing:
     sampling:
       probability: 1.0
