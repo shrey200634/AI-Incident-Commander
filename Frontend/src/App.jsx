@@ -16,21 +16,28 @@ function AuthenticatedApp() {
   const [activeCount, setActiveCount] = useState(0);
   const [dlqCount, setDlqCount] = useState(0);
 
-  const refreshCounts = useCallback(() => {
-    queryApi.getActiveIncidents()
-      .then((list) => setActiveCount(list?.length || 0))
-      .catch(() => setActiveCount(0));
+    // knownActiveCount: pages that already fetch the active-incidents list
+    // themselves (Dashboard, Incidents) pass their count straight through
+    // instead of triggering a second, redundant gateway request.
+    const refreshCounts = useCallback((knownActiveCount) => {
+      if (typeof knownActiveCount === 'number') {
+        setActiveCount(knownActiveCount);
+      } else {
+        queryApi.getActiveIncidents()
+          .then((list) => setActiveCount(list?.length || 0))
+          .catch(() => setActiveCount(0));
+      }
 
-    adminDlqApi.getUnreplayed()
-      .then((list) => setDlqCount(list?.length || 0))
-      .catch(() => setDlqCount(0));
-  }, []);
+      adminDlqApi.getUnreplayed()
+        .then((list) => setDlqCount(list?.length || 0))
+        .catch(() => setDlqCount(0));
+    }, []);
 
-  useEffect(() => {
-    refreshCounts();
-    const interval = setInterval(refreshCounts, 10000);
-    return () => clearInterval(interval);
-  }, [refreshCounts]);
+    useEffect(() => {
+      refreshCounts();
+      const interval = setInterval(() => refreshCounts(), 15000);
+      return () => clearInterval(interval);
+    }, [refreshCounts]);
 
   // STOMP WebSocket real-time event listener
   useEffect(() => {

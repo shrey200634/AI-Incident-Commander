@@ -46,19 +46,22 @@ export default function IncidentsPage({ wsSubscribe, refreshActiveCount }) {
       } else {
         data = await queryApi.getAllIncidents();
       }
-      setIncidents(data || []);
-    } catch (err) {
-      console.error('Failed to fetch incidents', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeFilter, incidents.length]);
+            setIncidents(data || []);
+            if (activeFilter === 'active') {
+              refreshActiveCount?.(data?.length || 0);
+            }
+          } catch (err) {
+            console.error('Failed to fetch incidents', err);
+          } finally {
+            setLoading(false);
+          }
+        }, [activeFilter, incidents.length, refreshActiveCount]);
 
   useEffect(() => {
     fetchIncidents();
     const interval = setInterval(() => {
       fetchIncidents(true);
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [fetchIncidents]);
 

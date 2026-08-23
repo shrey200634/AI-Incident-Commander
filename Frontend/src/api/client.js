@@ -17,14 +17,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// on 401, drop the stale token and force re-login
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// on 401, drop the stale token and force re-login.
+// on 429, the gateway is rate-limiting us — back off for the window it
+// tells us about and retry once, rather than surfacing it as "backend down".
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
       authStorage.clearToken();
       window.location.href = '/login';
+      return Promise.reject(error);
     }
+
+    if (error.response?.status === 429 && !error.config._retriedAfterRateLimit) {
+      const retryAfterHeader = error.response.headers?.['retry-after'];
+      const waitSeconds = Math.min(Number(retryAfterHeader) || 2, 10); // cap the wait
+      error.config._retriedAfterRateLimit = true;
+      await sleep(waitSeconds * 1000);
+      return api.request(error.config);
+    }
+
     return Promise.reject(error);
   }
 );
