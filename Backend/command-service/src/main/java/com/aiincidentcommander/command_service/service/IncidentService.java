@@ -44,7 +44,8 @@ public class IncidentService {
     private static final Map<IncidentStatus , Set<IncidentStatus>> VALID_TRANSITION = Map.of(
             IncidentStatus.NEW, Set.of(IncidentStatus.INVESTIGATING, IncidentStatus.RESOLVED, IncidentStatus.ESCALATED),
             IncidentStatus.INVESTIGATING, Set.of(IncidentStatus.ACTION_PROPOSED, IncidentStatus.RESOLVED, IncidentStatus.ESCALATED),
-            IncidentStatus.ACTION_PROPOSED, Set.of(IncidentStatus.WAITING_APPROVAL, IncidentStatus.INVESTIGATING, IncidentStatus.RESOLVED, IncidentStatus.ESCALATED),            IncidentStatus.WAITING_APPROVAL, Set.of(IncidentStatus.EXECUTING, IncidentStatus.RESOLVED, IncidentStatus.ESCALATED, IncidentStatus.INVESTIGATING),
+            IncidentStatus.ACTION_PROPOSED, Set.of(IncidentStatus.WAITING_APPROVAL, IncidentStatus.RESOLVED, IncidentStatus.ESCALATED),
+            IncidentStatus.WAITING_APPROVAL, Set.of(IncidentStatus.EXECUTING, IncidentStatus.RESOLVED, IncidentStatus.ESCALATED, IncidentStatus.INVESTIGATING),
             IncidentStatus.EXECUTING, Set.of(IncidentStatus.MONITORING, IncidentStatus.RESOLVED, IncidentStatus.ROLLBACK, IncidentStatus.ESCALATED),
             IncidentStatus.MONITORING, Set.of(IncidentStatus.RESOLVED, IncidentStatus.ROLLBACK, IncidentStatus.ESCALATED),
             IncidentStatus.ROLLBACK, Set.of(IncidentStatus.INVESTIGATING, IncidentStatus.RESOLVED, IncidentStatus.ESCALATED),
