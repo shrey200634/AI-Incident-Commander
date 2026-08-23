@@ -65,6 +65,7 @@
 | 🔌 **Real-Time WebSocket** | STOMP over WebSocket pushes live incident updates to the React dashboard |
 | 💀 **Dead Letter Queue Admin** | Failed Kafka events are persisted to MySQL and can be inspected/replayed from the UI |
 | 🛡️ **Idempotency Protection** | Redis-backed idempotency keys prevent duplicate approve/execute operations |
+| 🚦 **Rate Limiting** | Per-client token bucket (Bucket4j) at the Gateway — 20 requests/min by default, in-memory, no Redis dependency |
 | 🔁 **Rollback & Escalation** | Failed remediations auto-generate compensating rollback actions; unresolvable incidents escalate |
 | 📡 **Full Observability Stack** | OpenTelemetry Collector ships traces/logs from every service to Tempo + Loki; Grafana dashboards unify metrics, traces, and logs |
 | 🔗 **Cross-Project Scaling** | `SCALE_WORKER_PODS` reads Docker Compose labels off the target container to scale services in *other* Compose projects (e.g. [Distributed Job Forge](../distributed-job-forge)) via a host-path mapping config |
@@ -787,9 +788,22 @@ Unauthenticated or unauthorized calls receive a structured JSON error instead of
 ```json
 // 401 — missing/invalid token
 { "status": 401, "error": "Unauthorized", "message": "Missing or invalid token", "path": "/api/incidents" }
+```
 
-// 403 — authenticated but insufficient role
-{ "status": 403, "error": "Forbidden", "message": "You don't have permission for this resource", "path": "/api/admin/dlq" }
+> A `403 Forbidden` handler (`SecurityErrorHandlers.forbiddenHandler()`) is also wired into the filter chain, ready for role-based rules — but today there's a single `ADMIN` user and no `hasRole(...)` checks anywhere, so in practice every authenticated request is authorized. Anyone building on this should treat that as a gap to close (e.g. a `VIEWER` role that can read incidents but not approve/execute actions) rather than existing role enforcement.
+
+### Rate Limiting
+
+Every request through the Gateway passes through `RateLimitFilter` before it reaches `JwtAuthFilter` — so rate limiting applies even to unauthenticated traffic hitting `/api/auth/login`.
+
+- **Algorithm:** token bucket, via [Bucket4j](https://bucket4j.com/) (`Bandwidth.classic` + `Refill.greedy`). Default config is 20 tokens capacity, refilling 20 tokens every 60 seconds — see `rate-limit.*` in `api-gateway/application.yaml`.
+- **Keying:** one bucket per client, keyed off `X-Forwarded-For` (falling back to `request.getRemoteAddr()`) — so it's per-IP, not per-user or per-JWT.
+- **Storage:** a plain in-memory `ConcurrentHashMap<String, Bucket>` inside `RateLimitService`. **No Redis involved.** This is a deliberate simplification for a single-instance deployment — it means limits reset on restart and won't be shared if you ever run more than one `api-gateway` replica behind a load balancer. If you scale the gateway horizontally, this needs to move to a shared store (Bucket4j has a Redis/Hazelcast-backed `ProxyManager` for exactly that).
+- **On limit exceeded:** returns `429 Too Many Requests` with a `Retry-After` header (seconds until refill) and a JSON body. On success, the response carries `X-RateLimit-Remaining` so clients can self-throttle.
+
+```json
+// 429 — rate limit exceeded
+{ "status": 429, "error": "Too Many Requests", "message": "Rate limit exceeded. Try again in 42s.", "path": "/api/incidents" }
 ```
 
 ### Security Configuration
@@ -804,6 +818,9 @@ Unauthenticated or unauthorized calls receive a structured JSON error instead of
 | `PasswordConfig` | `api-gateway/.../config/PasswordConfig.java` | Exposes the `BCryptPasswordEncoder` bean |
 | `SecurityErrorHandlers` | `api-gateway/.../config/SecurityErrorHandlers.java` | JSON `401`/`403` response bodies instead of default Spring error pages |
 | `AuthController` | `api-gateway/.../controller/AuthController.java` | `POST /api/auth/login` — the only unauthenticated write endpoint |
+| `RateLimitFilter` | `api-gateway/.../ratelimit/RateLimitFilter.java` | Per-request filter enforcing the token bucket, ahead of JWT auth |
+| `RateLimitService` | `api-gateway/.../ratelimit/RateLimitService.java` | Owns the in-memory bucket map; builds a Bucket4j `Bandwidth` per client key |
+| `RateLimitProperties` | `api-gateway/.../ratelimit/RateLimitProperties.java` | Binds `rate-limit.capacity` / `rate-limit.refill-tokens` / `rate-limit.refill-seconds` |
 
 > ⚠️ **Trust boundary note:** JWT validation currently happens **only at the API Gateway**. Command/Query/Agent/Notification services do not independently verify the token — they trust traffic arriving from the gateway. In production, run these services on a private network/VPC not reachable directly from outside the gateway (the bundled `docker-compose.yml` already keeps them off the host network except via their debug port mappings), or add a shared-secret / mTLS check between services for defense in depth.
 
@@ -1046,6 +1063,7 @@ Open the **Gateway's** Swagger UI and use the dropdown in the top-right corner t
 | **MySQL 8.0** | Persistent storage (command + query + DLQ + notifications) |
 | **Redis 7** | Caching (metrics, idempotency keys) |
 | **Resilience4j** | Circuit breaker for Prometheus calls |
+| **Bucket4j** | Token-bucket rate limiting at the Gateway (in-memory, per-client-IP) |
 | **Docker Java API** | Container management execution |
 | **Spring WebSocket (STOMP)** | Real-time push to frontend |
 | **JavaMailSender** | SMTP email notifications |
