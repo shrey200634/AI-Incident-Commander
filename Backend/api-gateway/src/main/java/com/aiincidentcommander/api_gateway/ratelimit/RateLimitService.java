@@ -13,18 +13,31 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class RateLimitService {
 
-    private final RateLimitProperties properties ;
-    private final ConcurrentHashMap<String , Bucket> buckets = new ConcurrentHashMap<>();
+    private final RateLimitProperties properties;
 
-    public  Bucket resolveBucket(String clientKey){
-        return buckets.computeIfAbsent(clientKey, key->newBucket());
+
+    private final ConcurrentHashMap<String, Bucket> authBuckets = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
+
+    public Bucket resolveBucket(RateLimitTier tier, String clientKey) {
+        return switch (tier) {
+            case AUTH -> authBuckets.computeIfAbsent(clientKey, k -> newBucket(properties.getAuth()));
+            case GENERAL -> generalBuckets.computeIfAbsent(clientKey, k -> newBucket(properties.getGeneral()));
+        };
     }
 
-    private Bucket newBucket() {
+    private Bucket newBucket(RateLimitProperties.Tier tierConfig) {
         Bandwidth limit = Bandwidth.classic(
-                properties.getCapacity(),
-                Refill.greedy(properties.getRefillToken(), Duration.ofSeconds(properties.getRefillSecond()))
+                tierConfig.getCapacity(),
+                Refill.greedy(tierConfig.getRefillTokens(), Duration.ofSeconds(tierConfig.getRefillSeconds()))
         );
         return Bucket.builder().addLimit(limit).build();
+    }
+
+    public int capacityFor(RateLimitTier tier) {
+        return switch (tier) {
+            case AUTH -> properties.getAuth().getCapacity();
+            case GENERAL -> properties.getGeneral().getCapacity();
+        };
     }
 }

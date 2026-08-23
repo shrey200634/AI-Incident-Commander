@@ -11,8 +11,23 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "rate-limit")
 public class RateLimitProperties {
 
-    private int capacity = 20;
-    private int refillToken =20 ;
-    private int refillSecond =60 ;
+    private Tier auth = new Tier(10, 10, 60);       // for auth endpoint
+    private Tier general = new Tier(300, 300, 60);  //for the general
 
+    @Setter
+    @Getter
+    public static class Tier {
+        private int capacity;
+        private int refillTokens;
+        private int refillSeconds;
+
+        public Tier() {
+        }
+
+        public Tier(int capacity, int refillTokens, int refillSeconds) {
+            this.capacity = capacity;
+            this.refillTokens = refillTokens;
+            this.refillSeconds = refillSeconds;
+        }
+    }
 }
