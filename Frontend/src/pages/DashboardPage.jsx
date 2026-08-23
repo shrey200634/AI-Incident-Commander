@@ -47,11 +47,12 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
           ? active
           : allList.filter((i) => i.status !== 'RESOLVED' && i.status !== 'ESCALATED');
 
-        setIncidents(activeList);
-        setAllIncidents(allList);
-        const dlqList = Array.isArray(dlq) ? dlq : (dlq?.content || dlq?.data || []);
-        setDlqCount(dlqList.length);
-      }
+               setIncidents(activeList);
+               setAllIncidents(allList);
+               const dlqList = Array.isArray(dlq) ? dlq : (dlq?.content || dlq?.data || []);
+               setDlqCount(dlqList.length);
+               refreshActiveCount?.(activeList.length);
+             }
 
       // Asynchronously fetch Prometheus metrics in background without blocking active incidents
       agentApi.getMetrics('api-service').then((m) => {
@@ -72,15 +73,15 @@ export default function DashboardPage({ wsSubscribe, refreshActiveCount }) {
     } finally {
       setLoading(false);
     }
-  }, [incidents.length]);
+  }, [incidents.length, refreshActiveCount]);
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(() => {
-      fetchData(true);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    useEffect(() => {
+      fetchData();
+      const interval = setInterval(() => {
+        fetchData(true);
+      }, 5000);
+      return () => clearInterval(interval);
+    }, [fetchData]);
 
   // STOMP WebSocket real-time event listener
   useEffect(() => {

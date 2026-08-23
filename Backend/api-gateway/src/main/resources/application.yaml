@@ -14,9 +14,14 @@ jwt:
   expiration-ms: 3600000   # 1 hour
 
 rate-limit:
-  capacity: 20
-  refill-tokens: 20
-  refill-seconds: 60
+  auth:
+    capacity: 10
+    refill-tokens: 10
+    refill-seconds: 60
+  general:
+    capacity: 300
+    refill-tokens: 300
+    refill-seconds: 60
 
 springdoc:
   swagger-ui:
