@@ -39,3 +39,7 @@ service:
       receivers: [otlp]
       processors: [resource, batch]
       exporters: [otlphttp/loki, debug]
+    metrics:
+      receivers: [ otlp ]
+      processors: [ resource, batch ]
+      exporters: [ prometheusremotewrite, debug ]
