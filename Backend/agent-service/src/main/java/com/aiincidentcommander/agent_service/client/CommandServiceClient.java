@@ -14,8 +14,9 @@ public class CommandServiceClient {
 
     private final RestClient restClient ;
 
-    public CommandServiceClient(@Value("${command-service.base-url}") String baseUrl) {
-        this.restClient =RestClient.builder()
+    public CommandServiceClient(RestClient.Builder restClientBuilder,
+                                @Value("${command-service.base-url}") String baseUrl) {
+        this.restClient = restClientBuilder
                 .baseUrl(baseUrl)
                 .build();
     }
