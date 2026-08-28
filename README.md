@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ AI Incident Commander
+#  AI Incident Commander
 
 ### Autonomous AI-Powered Incident Management Platform
 
@@ -56,21 +56,21 @@
 
 | Feature | Description |
 |:---|:---|
-| 🤖 **Autonomous AI Investigation** | Gemini 2.5 Flash + Groq LLaMA 3.3 agents automatically investigate incidents using diagnostic tools |
-| 🔄 **CQRS Architecture** | Strict command/query separation with Kafka event sourcing for scalability and auditability |
-| ✅ **Human-in-the-Loop** | AI proposes actions; humans approve/reject before execution. No autonomous execution. |
-| 🐳 **Docker Execution Engine** | Approved actions (restart, scale) execute against real Docker containers via Docker socket |
-| 📊 **Live Prometheus Telemetry** | Real-time error rate & latency metrics with Resilience4j circuit breaker fallback to Redis cache |
-| 📧 **Email Notifications** | Automated alerts for proposed actions, rollbacks, and escalations via SMTP |
-| 🔌 **Real-Time WebSocket** | STOMP over WebSocket pushes live incident updates to the React dashboard |
-| 💀 **Dead Letter Queue Admin** | Failed Kafka events are persisted to MySQL and can be inspected/replayed from the UI |
-| 🛡️ **Idempotency Protection** | Redis-backed idempotency keys prevent duplicate approve/execute operations |
-| 🚦 **Rate Limiting** | Per-client token bucket (Bucket4j) at the Gateway — 20 requests/min by default, in-memory, no Redis dependency |
-| 🔁 **Rollback & Escalation** | Failed remediations auto-generate compensating rollback actions; unresolvable incidents escalate |
-| 📡 **Full Observability Stack** | OpenTelemetry Collector ships traces/logs from every service to Tempo + Loki; Grafana dashboards unify metrics, traces, and logs |
-| 🔗 **Cross-Project Scaling** | `SCALE_WORKER_PODS` reads Docker Compose labels off the target container to scale services in *other* Compose projects (e.g. [Distributed Job Forge](../distributed-job-forge)) via a host-path mapping config |
-| 🔐 **JWT Authentication** | Stateless, BCrypt + JWT-secured login at the API Gateway; every downstream call from the SPA carries a signed `Bearer` token |
-| 🧾 **Centralized Swagger / OpenAPI** | Each service exposes its own `springdoc-openapi` spec; the Gateway's Swagger UI aggregates all four into a single interactive API console |
+|  **Autonomous AI Investigation** | Gemini 2.5 Flash + Groq LLaMA 3.3 agents automatically investigate incidents using diagnostic tools |
+| **CQRS Architecture** | Strict command/query separation with Kafka event sourcing for scalability and auditability |
+|  **Human-in-the-Loop** | AI proposes actions; humans approve/reject before execution. No autonomous execution. |
+|  **Docker Execution Engine** | Approved actions (restart, scale) execute against real Docker containers via Docker socket |
+|  **Live Prometheus Telemetry** | Real-time error rate & latency metrics with Resilience4j circuit breaker fallback to Redis cache |
+|  **Email Notifications** | Automated alerts for proposed actions, rollbacks, and escalations via SMTP |
+|  **Real-Time WebSocket** | STOMP over WebSocket pushes live incident updates to the React dashboard |
+|  **Dead Letter Queue Admin** | Failed Kafka events are persisted to MySQL and can be inspected/replayed from the UI |
+|  **Idempotency Protection** | Redis-backed idempotency keys prevent duplicate approve/execute operations |
+|  **Rate Limiting** | Per-client token bucket (Bucket4j) at the Gateway — 20 requests/min by default, in-memory, no Redis dependency |
+|  **Rollback & Escalation** | Failed remediations auto-generate compensating rollback actions; unresolvable incidents escalate |
+|  **Full Observability Stack** | OpenTelemetry Collector ships traces/logs from every service to Tempo + Loki; Grafana dashboards unify metrics, traces, and logs |
+|  **Cross-Project Scaling** | `SCALE_WORKER_PODS` reads Docker Compose labels off the target container to scale services in *other* Compose projects (e.g. [Distributed Job Forge](../distributed-job-forge)) via a host-path mapping config |
+|  **JWT Authentication** | Stateless, BCrypt + JWT-secured login at the API Gateway; every downstream call from the SPA carries a signed `Bearer` token |
+|  **Centralized Swagger / OpenAPI** | Each service exposes its own `springdoc-openapi` spec; the Gateway's Swagger UI aggregates all four into a single interactive API console |
 
 
 
@@ -82,17 +82,17 @@
 
 ```mermaid
 graph TB
-    subgraph Client["🖥️ Client Layer"]
+    subgraph Client[" Client Layer"]
         UI["React 19 SPA<br/>(Vite + STOMP WebSocket)"]
     end
 
-    subgraph Gateway["🌐 API Gateway — :8080"]
+    subgraph Gateway[" API Gateway — :8080"]
         GW["Spring Cloud Gateway WebMVC<br/>Route-based Proxy"]
         SEC["Spring Security<br/>JWT Auth Filter"]
         SWG["springdoc Swagger UI<br/>Aggregated API Docs"]
     end
 
-    subgraph Services["⚙️ Backend Microservices"]
+    subgraph Services[" Backend Microservices"]
         subgraph CS["Command Service — :8081"]
             CSC["IncidentController"]
             CSS["IncidentService"]
@@ -121,7 +121,7 @@ graph TB
         end
     end
 
-    subgraph Infra["🏭 Infrastructure"]
+    subgraph Infra[" Infrastructure"]
         KAFKA["Apache Kafka<br/>(9 topics + 9 DLQ topics)"]
         MYSQL["MySQL 8.0<br/>(Incidents, Actions, DLQ, Notifications)"]
         REDIS["Redis 7<br/>(Cache, Idempotency, Metrics)"]
@@ -129,12 +129,12 @@ graph TB
         DOCKER["Docker Engine<br/>(Container Mgmt)"]
     end
 
-    subgraph AI["🧠 AI Providers"]
+    subgraph AI[" AI Providers"]
         GEMINI["Google Gemini 2.5 Flash"]
         GROQ["Groq LLaMA 3.3 70B"]
     end
 
-    subgraph Obs["📡 Observability Stack"]
+    subgraph Obs[" Observability Stack"]
         OTEL["OTel Collector<br/>:4317 / :4318"]
         TEMPO["Grafana Tempo<br/>:3200 (Traces)"]
         LOKI["Grafana Loki<br/>:3100 (Logs)"]
@@ -176,7 +176,7 @@ graph TB
     ASAI --> ASTL
     ASTL -->|proposeAction| CS
 
-    NSE -->|SMTP| EMAIL["📧 Email Server"]
+    NSE -->|SMTP| EMAIL[" Email Server"]
 
     CS & QS & AS & NS -.->|OTLP traces + logs| OTEL
     OTEL --> TEMPO
@@ -265,7 +265,7 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    subgraph Write["✏️ Write Side (Command Service :8081)"]
+    subgraph Write[" Write Side (Command Service :8081)"]
         W1["POST /api/incidents"]
         W2["POST .../approve"]
         W3["POST .../execute"]
@@ -273,7 +273,7 @@ graph LR
         W5["PATCH .../status"]
     end
 
-    subgraph Bus["📨 Event Bus (Kafka)"]
+    subgraph Bus[" Event Bus (Kafka)"]
         E1["incident.created"]
         E2["action.proposed"]
         E3["action.approved"]
@@ -283,7 +283,7 @@ graph LR
         E7["incident.resolved"]
     end
 
-    subgraph Read["📖 Read Side (Query Service :8082)"]
+    subgraph Read[" Read Side (Query Service :8082)"]
         R1["GET /api/query/incidents"]
         R2["GET .../incidents/active"]
         R3["GET .../{id}/detail"]
