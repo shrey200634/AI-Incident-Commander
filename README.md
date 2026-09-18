@@ -24,7 +24,7 @@
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Key Features](#-key-features)
 - [High-Level Design (HLD)](#-high-level-design-hld)
