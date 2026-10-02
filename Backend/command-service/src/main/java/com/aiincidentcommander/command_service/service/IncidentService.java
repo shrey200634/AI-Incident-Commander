@@ -11,6 +11,7 @@ import com.aiincidentcommander.command_service.model.ActionStatus;
 import com.aiincidentcommander.command_service.model.Incident;
 import com.aiincidentcommander.command_service.model.IncidentStatus;
 import com.aiincidentcommander.command_service.model.RemediationAction;
+import com.aiincidentcommander.command_service.remediation.ActionType;
 import com.aiincidentcommander.command_service.repository.IncidentRep;
 import com.aiincidentcommander.command_service.repository.RemediationActionRepository;
 import jakarta.transaction.Transactional;
@@ -101,6 +102,8 @@ public class IncidentService {
         Incident incident  = incidentRep.findById(id)
                 .orElseThrow(()-> new IncidentNotFoundException(id));
 
+        ActionType actionType = ActionType.parse(request.getActionType());
+
         if (incident.getStatus() ==IncidentStatus.NEW){
             transitionStatus(incident, IncidentStatus.INVESTIGATING);
         }
@@ -108,7 +111,7 @@ public class IncidentService {
 
         RemediationAction action = RemediationAction.builder()
                 .incidentId(incident.getId())
-                .actionType(request.getActionType())
+                .actionType(actionType.name())
                 .rationale(request.getRationale())
                 .status(ActionStatus.PROPOSED)
                 .build();
@@ -120,6 +123,11 @@ public class IncidentService {
         return toResponseRemediation(saved, incident.getServiceName());
 
     }
+
+
+
+
+
     //approve action
 
     @Transactional
