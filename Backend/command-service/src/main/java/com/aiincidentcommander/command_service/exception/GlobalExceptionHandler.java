@@ -42,6 +42,12 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, message);
     }
 
+    @ExceptionHandler(UnsupportedActionTypeException.class)
+    public ResponseEntity<Map<String , Object>> handleUnSupportedAction(RuntimeException ex ){
+        return buildResponse(HttpStatus.BAD_REQUEST , ex.getMessage());
+
+    }
+
     @ExceptionHandler(Exception.class )
     public  ResponseEntity<Map<String , Object>> handleGeneric(Exception ex ){
         log.error("unhandled Exception " , ex);
